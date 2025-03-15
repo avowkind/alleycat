@@ -1,0 +1,9 @@
+name = "Python Rules"
+pattern = "**/*.py"
+lint_on_save = true
+python.linting.enabled = true
+python.defaultInterpreterPath = "python3.12"
+python.analysis.typeCheckingMode = "basic"
+python.formatting.provider = "black"
+python.linting.flake8Enabled = true
+python.linting.mypyEnabled = true 

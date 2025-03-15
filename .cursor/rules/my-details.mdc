@@ -1,0 +1,27 @@
+---
+description: my details when entering author and email
+globs: 
+alwaysApply: false
+---
+
+# Who is the author?
+
+When creating documentation, file headers or filling in project files use these details:
+
+- name: Andrew Watkins
+- email: andrew@groat.nz
+- company: groat.nz
+- default license; MIT
+
+## Always try to optimize based on my choices of hardware, system softwares & settings:
+- Macbook Pro M2 Max 
+- Warp terminal emulator
+-- Oh My Zsh
+-- Homebrew
+-- tree
+
+
+## Attitude & Style
+- Don’t apologize for errors: fix them.
+- Comments MUST include purpose(s)
+- If you can’t finish code, add #TODO: comments.

@@ -1,0 +1,27 @@
+name = "Python Project Structure"
+pattern = "pyproject.toml"
+
+[project_template.build_system]
+requires = ["hatchling"]
+build_backend = "hatchling.build"
+
+[project_template]
+project_name = "${input:projectName}"
+python_version = "3.12"
+package_manager = "uv"
+dev_dependencies = [
+    "pytest",
+    "black",
+    "flake8",
+    "mypy",
+    "pytest-cov"
+]
+directory_structure = [
+    "src/${input:projectName}",
+    "tests",
+    "docs"
+]
+init_commands = [
+    "uv venv",
+    "uv pip install -e .[dev]"
+] 

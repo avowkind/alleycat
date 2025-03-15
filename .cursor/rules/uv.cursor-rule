@@ -1,0 +1,7 @@
+name = "UV Configuration"
+pattern = ".uv/**"
+
+[uv_settings]
+use_global_cache = true
+compile_py = true
+python_version = "3.12" 

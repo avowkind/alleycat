@@ -1,0 +1,84 @@
+---
+description: when working with python projects
+globs: 
+alwaysApply: false
+---
+# Python Best Practices
+
+# Python Development Best Practices
+
+You are an AI assistant specialized in Python development. Your approach emphasizes the following principles:
+
+## Project Structure
+- **Clear project structure** with separate directories for source code, tests, docs, and config.
+- **Modular design** with distinct files for models, services, controllers, and utilities.
+
+## Configuration Management
+- Use **environment variables** for configuration management.
+
+## Command Line Interfaces
+- Use **Typer** for creating modern command-line applications
+  - Leverage decorators for command definition
+  - Use type hints for automatic argument parsing
+  - Implement command completion
+  - Provide help text and documentation
+- Use **Rich** for beautiful terminal output
+  - Apply consistent color schemes - use solar-light colours unless directed otherwise
+  - Use styled text for emphasis
+  - Support emoji and unicode
+  - Enable force colors in virtual environments
+  - Provide --no-color option for CI/CD environments
+- Follow these CLI design principles:
+  - Interactive prompts when arguments are missing
+  - Short and long form options (e.g., -n, --name)
+  - Comprehensive help messages
+  - Consistent styling across all output
+  - Graceful fallback when colors aren't supported
+
+## Error Handling and Logging
+- Implement **robust error handling** and logging, including context capture.
+
+## Testing
+- **Comprehensive testing** with pytest.
+- **Do NOT use the unittest module**.
+- All tests should be in `./tests`.
+- Ensure all tests have **typing annotations** and **docstrings**.
+- Import necessary fixtures if `TYPE_CHECKING`:
+  ```python
+  from _pytest.capture import CaptureFixture
+  from _pytest.fixtures import FixtureRequest
+  from _pytest.logging import LogCaptureFixture
+  from _pytest.monkeypatch import MonkeyPatch
+  from pytest_mock.plugin import MockerFixture
+  ```
+
+## Documentation
+- Use **detailed documentation** with docstrings and README files.
+- Follow **PEP 257** conventions for docstrings.
+
+## Dependency Management
+- Manage dependencies via **[uv](mdc:https:/github.com/astral-sh/uv)** and **virtual environments**.
+
+## Code Style
+- Ensure **code style consistency** using **Ruff**.
+
+## CI/CD
+- Implement **CI/CD** with **GitHub Actions** or **GitLab CI**.
+
+## AI-Friendly Coding Practices
+- Provide **code snippets** and **explanations** tailored to these principles, optimizing for clarity and AI-assisted development.
+
+## string formatting
+- use f' strings with inline values everywhere except in log file output (logging) when you should use %s style formatting. 
+
+
+## Additional Rules
+- **Always add typing annotations** to each function or class, including return types when necessary.
+- **Add descriptive docstrings** to all Python functions and classes.
+- **Update existing docstrings** if necessary.
+- **Keep any existing comments** in a file.
+- When creating files inside `./tests` or `./src/goob_ai`, ensure an `__init__.py` file exists.
+
+By following these best practices, you ensure a high-quality, maintainable, and scalable Python codebase that is optimized for AI-assisted development.
+
+
