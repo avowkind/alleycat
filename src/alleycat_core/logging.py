@@ -1,5 +1,7 @@
 """Logging configuration for AlleyCat."""
 
+from typing import Any
+
 from rich.console import Console
 from rich.theme import Theme
 
@@ -12,25 +14,49 @@ theme = Theme({
     "debug": "grey70",
 })
 
-console = Console(theme=theme)
+# Console for verbose output (stderr)
+verbose_console = Console(stderr=True, theme=theme)
+# Console for errors (stderr)
 error_console = Console(stderr=True, theme=theme)
+# Console for normal output (stdout)
+output_console = Console(theme=theme)
 
-def info(message: str, **kwargs) -> None:
+_verbose_enabled = False
+
+def set_verbose(enabled: bool) -> None:
+    """Enable or disable verbose output."""
+    global _verbose_enabled
+    _verbose_enabled = enabled
+
+def is_verbose() -> bool:
+    """Check if verbose output is enabled."""
+    return _verbose_enabled
+
+def info(message: str, **kwargs: Any) -> None:
     """Log an info message."""
-    console.print(f"[info]ℹ [/info]{message}", **kwargs)
+    if _verbose_enabled:
+        verbose_console.print(f"[info]ℹ [/info]{message}", **kwargs)
 
-def warning(message: str, **kwargs) -> None:
+def warning(message: str, **kwargs: Any) -> None:
     """Log a warning message."""
-    console.print(f"[warning]⚠ [/warning]{message}", **kwargs)
+    if _verbose_enabled:
+        verbose_console.print(f"[warning]⚠ [/warning]{message}", **kwargs)
 
-def error(message: str, **kwargs) -> None:
+def error(message: str, **kwargs: Any) -> None:
     """Log an error message."""
     error_console.print(f"[error]✗ [/error]{message}", **kwargs)
 
-def success(message: str, **kwargs) -> None:
+def success(message: str, **kwargs: Any) -> None:
     """Log a success message."""
-    console.print(f"[success]✓ [/success]{message}", **kwargs)
+    if _verbose_enabled:
+        verbose_console.print(f"[success]✓ [/success]{message}", **kwargs)
 
-def debug(message: str, **kwargs) -> None:
+def debug(message: str, **kwargs: Any) -> None:
     """Log a debug message."""
-    console.print(f"[debug]🔍 [/debug]{message}", **kwargs) 
+    if _verbose_enabled:
+        verbose_console.print(f"[debug]🔍 [/debug]{message}", **kwargs)
+
+def output(message: str, **kwargs: Any) -> None:
+    """Print output to stdout."""
+    output_console.print(message, **kwargs)
+

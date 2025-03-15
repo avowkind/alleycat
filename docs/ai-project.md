@@ -5,10 +5,11 @@ Goal: Create a simple command line tool that carry on a chat conversation with a
 ## Features
 
 ### Core Functionality
+
 1. **Dual Operation Modes**
    - Single-shot mode: Accept input and return one response (Unix pipe-friendly)
    - Interactive mode: Continuous conversation with shift+enter for submission
-   
+
 2. **Input/Output Handling**
    - Streaming responses in interactive mode
    - Support for multi-line input
@@ -38,6 +39,7 @@ Goal: Create a simple command line tool that carry on a chat conversation with a
    - Token usage tracking
 
 ### Additional Features
+
 1. **System Prompts**
    - Load custom system prompts from files
    - Default role templates
@@ -62,7 +64,9 @@ Goal: Create a simple command line tool that carry on a chat conversation with a
 ## Package Architecture
 
 ### Core Package (`alleycat_core`)
+
 1. **LLM Interface Layer**
+
    ```
    alleycat_core/
    ├── llm/
@@ -73,6 +77,7 @@ Goal: Create a simple command line tool that carry on a chat conversation with a
    ```
 
 2. **Chat Management**
+
    ```
    alleycat_core/
    ├── chat/
@@ -83,6 +88,7 @@ Goal: Create a simple command line tool that carry on a chat conversation with a
    ```
 
 3. **Configuration**
+
    ```
    alleycat_core/
    ├── config/
@@ -92,6 +98,7 @@ Goal: Create a simple command line tool that carry on a chat conversation with a
    ```
 
 4. **Common Utilities**
+
    ```
    alleycat_core/
    ├── utils/
@@ -101,7 +108,9 @@ Goal: Create a simple command line tool that carry on a chat conversation with a
    ```
 
 ### Applications (`alleycat_apps`)
+
 1. **Command Line Interface**
+
    ```
    alleycat_apps/
    ├── cli/
@@ -112,6 +121,7 @@ Goal: Create a simple command line tool that carry on a chat conversation with a
    ```
 
 2. **Future Web Interfaces**
+
    ```
    alleycat_apps/
    ├── api/                # Future FastAPI implementation
@@ -152,9 +162,9 @@ Goal: Create a simple command line tool that carry on a chat conversation with a
    - Separate test fixtures by provider
 
 ## Implementation Priority
+
 1. Basic CLI with single-shot mode
 2. Interactive mode with streaming
 3. Configuration management
 4. Session management
 5. Additional features based on usage feedback
-

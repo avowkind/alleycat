@@ -1,0 +1,14 @@
+I'm thinking of a number between one a five what is it? 
+
+
+I'm thinking of a number between one a five what is it? 
+I'm not a mind reader, but if you want to play along, I'll guess: is it 3?
+
+who is bo derek married to
+As of my last update, Bo Derek is married to actor John Corbett. They got 
+married in 2020 after being together for many years.
+
+create a list of 5 stoic concepts
+✗ No prompt provided. Either pass it as arguments or via stdin:
+  alleycat tell me a joke
+    echo 'tell me a joke' | alleycat

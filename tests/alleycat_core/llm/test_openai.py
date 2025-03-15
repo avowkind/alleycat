@@ -1,11 +1,12 @@
 """Tests for OpenAI provider implementation."""
 
 import os
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 import pytest
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
-from openai.types.chat.chat_completion import Choice, Choice as ChunkChoice
+from openai.types.chat.chat_completion import Choice
+from openai.types.chat.chat_completion import Choice as ChunkChoice
 from openai.types.chat.chat_completion_message import ChatCompletionMessage
 from openai.types.completion_usage import CompletionUsage
 
@@ -114,12 +115,12 @@ async def test_openai_provider_complete(
         "openai.resources.chat.completions.Completions.create",
         return_value=mock_openai_response
     )
-    
+
     provider = OpenAIProvider(openai_config)
     messages = [Message(role="user", content="Hello")]
-    
+
     response = await provider.complete(messages)
-    
+
     assert response.content == "Test response"
     assert response.finish_reason == "stop"
     assert response.usage == {
@@ -127,7 +128,7 @@ async def test_openai_provider_complete(
         "prompt_tokens": 10,
         "total_tokens": 15
     }
-    
+
     mock_create.assert_called_once_with(
         model=openai_config.model,
         messages=[{"role": "user", "content": "Hello"}],
@@ -146,14 +147,14 @@ async def test_openai_provider_complete_stream(
         "openai.resources.chat.completions.Completions.create",
         return_value=mock_openai_stream
     )
-    
+
     provider = OpenAIProvider(openai_config)
     messages = [Message(role="user", content="Hello")]
-    
+
     chunks = []
     async for chunk in provider.complete_stream(messages):
         chunks.append(chunk)
-    
+
     assert len(chunks) == 2
     assert chunks[0].content == "Test "
     assert chunks[0].finish_reason is None
@@ -165,6 +166,6 @@ def test_openai_factory():
     """Test OpenAI factory."""
     factory = OpenAIFactory()
     provider = factory.create(api_key=os.environ["ALLEYCAT_OPENAI_API_KEY"])
-    
+
     assert isinstance(provider, OpenAIProvider)
-    assert provider.config.api_key == os.environ["ALLEYCAT_OPENAI_API_KEY"] 
+    assert provider.config.api_key == os.environ["ALLEYCAT_OPENAI_API_KEY"]

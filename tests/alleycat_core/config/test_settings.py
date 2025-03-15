@@ -46,10 +46,10 @@ def test_settings_validation():
     """Test settings validation."""
     with pytest.raises(ValidationError):
         Settings(temperature=3.0)  # temperature must be <= 2.0
-        
+
     with pytest.raises(ValidationError):
         Settings(temperature=-0.1)  # temperature must be >= 0.0
-        
+
     with pytest.raises(ValidationError):
         Settings(output_format="invalid")  # must be text, markdown, or json
 
@@ -58,4 +58,4 @@ def test_settings_history_file():
     """Test history file path creation."""
     settings = Settings()
     assert settings.history_file.parent == Path.home() / ".alleycat"
-    assert settings.history_file.name == "history.json" 
+    assert settings.history_file.name == "history.json"

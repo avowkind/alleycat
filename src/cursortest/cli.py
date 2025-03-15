@@ -1,9 +1,7 @@
 """Command line interface for cursortest."""
 import os
-from typing import Optional
 
 import typer
-from rich import print as rprint
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -29,7 +27,7 @@ app = typer.Typer(
 
 @app.command()
 def hello(
-    name: Optional[str] = typer.Option(
+    name: str | None = typer.Option(
         None,
         "--name",
         "-n",
@@ -53,12 +51,12 @@ def hello(
         highlight=not no_color,
         emoji=True
     )
-    
+
     greeting = Text()
     greeting.append("Hello, ", style="bold blue")
     greeting.append(f"{name or 'World'}", style="bold green")
     greeting.append("! 👋", style="bold blue")
-    
+
     # Create a panel with the greeting
     panel = Panel(
         greeting,
@@ -66,9 +64,9 @@ def hello(
         border_style="blue",
         padding=(1, 2),
     )
-    
+
     output_console.print(panel)
 
 
 if __name__ == "__main__":
-    app() 
+    app()

@@ -42,4 +42,4 @@ def test_chat_response_optional_fields():
 def test_chat_response_validation():
     """Test ChatResponse validation."""
     with pytest.raises(ValidationError):
-        ChatResponse(content=123)  # type: ignore 
+        ChatResponse(content=123)  # type: ignore

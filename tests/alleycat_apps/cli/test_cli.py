@@ -1,12 +1,12 @@
 """Tests for the AlleyCat CLI interface."""
 
-import os
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import patch, AsyncMock
 
 from alleycat_apps.cli.main import app
-from alleycat_core.llm import Message, ChatResponse
+from alleycat_core.llm import ChatResponse, Message
 
 
 @pytest.fixture
@@ -79,4 +79,4 @@ def test_command_invalid_format(cli_runner):
         ]
     )
     assert result.exit_code != 0
-    assert "Invalid value for '--format'" in result.stdout 
+    assert "Invalid value for '--format'" in result.stdout
