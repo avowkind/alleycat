@@ -1,33 +1,41 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "cursortest"
+name = "alleycat"
 version = "0.1.0"
-description = "A Python project created with UV and modern best practices"
+description = "A command line tool for chat conversations with LLMs"
 authors = [
-    { name = "Andrew Watkins", email = "andrew@groat.nz" }
+    {name = "Andrew", email = "andrew@example.com"},
 ]
 dependencies = [
+    "openai>=1.12.0",
     "typer>=0.9.0",
-    "rich>=13.7.0"
+    "rich>=13.7.0",
+    "pydantic>=2.6.1",
+    "pydantic-settings>=2.1.0",
+    "python-dotenv>=1.0.0",
 ]
 requires-python = ">=3.12"
 readme = "README.md"
-license = { text = "MIT" }
+license = {text = "MIT"}
 
 [project.scripts]
-hello-world = "cursortest.cli:app"
+alleycat = "alleycat_apps.cli.main:app"
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.4.0",
-    "black>=23.7.0",
-    "flake8>=6.1.0",
-    "mypy>=1.5.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.5",
     "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "ruff>=0.2.1",
 ]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["alleycat_apps", "alleycat_core"]
 
 [tool.black]
 line-length = 88
@@ -41,4 +49,23 @@ warn_unused_configs = true
 
 [tool.pytest.ini_options]
 addopts = "-ra -q --cov"
-testpaths = ["tests"] 
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "D",   # pydocstyle
+] 

@@ -1,0 +1,2 @@
+[console_scripts]
+alleycat = alleycat_apps.cli.main:app

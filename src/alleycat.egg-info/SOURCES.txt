@@ -1,0 +1,11 @@
+README.md
+pyproject.toml
+setup.py
+src/alleycat.egg-info/PKG-INFO
+src/alleycat.egg-info/SOURCES.txt
+src/alleycat.egg-info/dependency_links.txt
+src/alleycat.egg-info/entry_points.txt
+src/alleycat.egg-info/requires.txt
+src/alleycat.egg-info/top_level.txt
+src/alleycat_apps/__init__.py
+src/alleycat_core/__init__.py

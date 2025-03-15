@@ -1,0 +1,113 @@
+Metadata-Version: 2.2
+Name: alleycat
+Version: 0.1.0
+Summary: A command line tool for chat conversations with LLMs
+Author-email: Andrew <andrew@example.com>
+License: MIT
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: openai>=1.12.0
+Requires-Dist: typer>=0.9.0
+Requires-Dist: rich>=13.7.0
+Requires-Dist: pydantic>=2.6.1
+Requires-Dist: pydantic-settings>=2.1.0
+Requires-Dist: python-dotenv>=1.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.23.5; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: pytest-mock>=3.12.0; extra == "dev"
+Requires-Dist: ruff>=0.2.1; extra == "dev"
+
+# AlleyCat
+
+A command line tool for chat conversations with LLMs.
+
+## Features
+
+- Single-shot mode for quick queries
+- Interactive mode for continuous conversations
+- Support for multiple LLM providers (currently OpenAI)
+- Configurable via environment variables, .env file, or command line
+- Rich output formatting (text, markdown, JSON)
+- Chat history management
+
+## Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/alleycat.git
+   cd alleycat
+   ```
+
+2. Install using pip:
+   ```bash
+   pip install .
+   ```
+
+## Configuration
+
+AlleyCat can be configured in several ways:
+
+1. Environment variables:
+   ```bash
+   export ALLEYCAT_OPENAI_API_KEY="your-api-key"
+   export ALLEYCAT_MODEL="gpt-4"
+   ```
+
+2. .env file:
+   ```
+   ALLEYCAT_OPENAI_API_KEY=your-api-key
+   ALLEYCAT_MODEL=gpt-4
+   ```
+
+3. Command line options:
+   ```bash
+   alleycat chat --api-key "your-api-key" --model "gpt-4" "Your prompt here"
+   ```
+
+## Usage
+
+### Single-shot Mode
+
+Send a single prompt and get a response:
+
+```bash
+alleycat chat "What is the meaning of life?"
+```
+
+With options:
+```bash
+alleycat chat --model "gpt-4" --temperature 0.8 --format markdown "Explain quantum computing"
+```
+
+### Interactive Mode (Coming Soon)
+
+Start an interactive chat session:
+
+```bash
+alleycat chat --interactive
+```
+
+## Development
+
+1. Create a virtual environment:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # Linux/macOS
+   .venv\Scripts\activate     # Windows
+   ```
+
+2. Install development dependencies:
+   ```bash
+   pip install -e ".[dev]"
+   ```
+
+3. Run tests:
+   ```bash
+   pytest
+   ```
+
+## License
+
+MIT License 

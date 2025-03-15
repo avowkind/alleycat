@@ -1,4 +1,4 @@
-# Andrew's AI project
+# AlleyCat - Andrews command line AI chat tool
 
 Goal: Create a simple command line tool that carry on a chat conversation with a remote LLM.  
 
@@ -61,10 +61,10 @@ Goal: Create a simple command line tool that carry on a chat conversation with a
 
 ## Package Architecture
 
-### Core Package (`aichat_core`)
+### Core Package (`alleycat_core`)
 1. **LLM Interface Layer**
    ```
-   aichat_core/
+   alleycat_core/
    ├── llm/
    │   ├── base.py          # Abstract base classes for LLM interfaces
    │   ├── openai.py        # OpenAI implementation
@@ -74,7 +74,7 @@ Goal: Create a simple command line tool that carry on a chat conversation with a
 
 2. **Chat Management**
    ```
-   aichat_core/
+   alleycat_core/
    ├── chat/
    │   ├── session.py       # Chat session management
    │   ├── history.py       # Conversation history handling
@@ -84,7 +84,7 @@ Goal: Create a simple command line tool that carry on a chat conversation with a
 
 3. **Configuration**
    ```
-   aichat_core/
+   alleycat_core/
    ├── config/
    │   ├── settings.py      # Configuration management
    │   ├── models.py        # Model configurations
@@ -93,17 +93,17 @@ Goal: Create a simple command line tool that carry on a chat conversation with a
 
 4. **Common Utilities**
    ```
-   aichat_core/
+   alleycat_core/
    ├── utils/
    │   ├── logging.py       # Logging utilities
    │   ├── formatting.py    # Response formatting
    │   └── errors.py       # Custom exceptions
    ```
 
-### Applications (`aichat_apps`)
+### Applications (`alleycat_apps`)
 1. **Command Line Interface**
    ```
-   aichat_apps/
+   alleycat_apps/
    ├── cli/
    │   ├── main.py         # Entry point
    │   ├── single_shot.py  # Single response mode
@@ -113,7 +113,7 @@ Goal: Create a simple command line tool that carry on a chat conversation with a
 
 2. **Future Web Interfaces**
    ```
-   aichat_apps/
+   alleycat_apps/
    ├── api/                # Future FastAPI implementation
    └── web/                # Future Streamlit implementation
    ```

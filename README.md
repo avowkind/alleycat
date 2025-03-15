@@ -1,104 +1,140 @@
-# Cursortest
+# AlleyCat
 
-A Python project created with UV and modern best practices. Features a colorful CLI greeting application that demonstrates modern Python CLI development patterns.
+A command line tool for chat conversations with LLMs.
 
-## Features
+## Future Features
 
-- Modern CLI interface with Typer
-- Rich text formatting with colors and emojis
-- Type hints and strict type checking
-- Comprehensive test coverage
-- UV package management
+- Interactive mode for continuous conversations
+- Support for multiple LLM providers beyond OpenAI
+- Chat history management with local storage
+- Custom prompt templates
+- Streaming responses
+- Context window management
+- Model parameter presets
+- Command completion for shells
 
-## Installation
+## Project Structure
 
-This project uses UV for dependency management. To get started:
+The project follows a modern Python package structure with a `src` layout:
 
-```bash
-# Create a virtual environment
-uv venv
-
-# Activate the virtual environment
-source .venv/bin/activate  # On Unix/macOS
-# or
-.venv\Scripts\activate  # On Windows
-
-# Install the package in editable mode with development dependencies
-uv pip install -e ".[dev]"
 ```
+alleycat/
+├── src/
+│   ├── alleycat_apps/      # Application code
+│   │   └── cli/           # CLI interface
+│   └── alleycat_core/     # Core functionality
+├── tests/                 # Test files
+├── pyproject.toml         # Project configuration
+└── setup.py              # Development installation
+```
+
+### Package Organization
+
+- `alleycat_apps`: Contains application-specific code
+  - `cli`: Command-line interface implementation
+- `alleycat_core`: Core functionality and business logic
+  - `config`: Configuration management
+  - `llm`: LLM integration and API handling
+
+## Development Setup
+
+This project uses [uv](https://github.com/astral-sh/uv) as the package manager for faster and more reliable Python package management.
+
+### Prerequisites
+
+- Python 3.12 or higher
+- uv package manager
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd alleycat
+   ```
+
+2. Create and activate a virtual environment with uv:
+   ```bash
+   uv venv
+   source .venv/bin/activate  # On Unix/macOS
+   # or
+   .venv\Scripts\activate     # On Windows
+   ```
+
+3. Install the package in development mode:
+   ```bash
+   uv pip install -e .
+   ```
+
+4. Install development dependencies:
+   ```bash
+   uv pip install -e ".[dev]"
+   ```
 
 ## Usage
 
-The `hello-world` command provides several ways to greet users:
+The CLI tool can be run using `uv run` to ensure the correct Python environment:
 
 ```bash
-# Basic usage (will prompt for name)
-hello-world
+# Show help
+uv run alleycat --help
 
-# Provide name directly
-hello-world --name "Andrew"
+# Basic usage
+uv run alleycat "Your prompt here"
 
-# Use short form for name
-hello-world -n "Andrew"
-
-# Disable colored output
-hello-world --name "Andrew" --no-color
+# With options
+uv run alleycat --format markdown --temperature 0.7 "Your prompt here"
 ```
 
-## Development
+### Command Line Options
 
-### Running Tests
+- `prompt`: The text prompt to send to the LLM (required)
+- `--model`, `-m`: Model to use (env: ALLEYCAT_MODEL)
+- `--temperature`, `-t`: Sampling temperature (0.0-2.0)
+- `--format`, `-f`: Output format (text, markdown, json)
+- `--api-key`: OpenAI API key (env: ALLEYCAT_OPENAI_API_KEY)
 
-Run the full test suite:
-```bash
-pytest
+### Environment Variables
+
+- `ALLEYCAT_MODEL`: Default model to use
+- `ALLEYCAT_OPENAI_API_KEY`: OpenAI API key
+
+## Package Management
+
+The project uses setuptools for package management, configured in `pyproject.toml`:
+
+```toml
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["alleycat_apps", "alleycat_core"]
 ```
 
-Run tests with coverage report:
-```bash
-pytest --cov=src/cursortest
+This configuration:
+- Uses the `src` layout for better package isolation
+- Explicitly declares packages to include
+- Supports development installation with `pip install -e .`
 
-# For HTML coverage report
-pytest --cov=src/cursortest --cov-report=html
-```
+## Development Tools
 
-Run specific test file:
-```bash
-pytest tests/test_cli.py -v
-```
+- **Testing**: pytest with async support
+  ```bash
+  uv run pytest
+  ```
 
-### Code Quality
+- **Linting**: ruff
+  ```bash
+  uv run ruff check .
+  ```
 
-Format code:
-```bash
-black .
-```
-
-Type checking:
-```bash
-mypy .
-```
-
-Linting:
-```bash
-flake8
-```
-
-### Project Structure
-
-```
-cursortest/
-├── src/cursortest/     # Source code
-│   ├── __init__.py     # Package initialization
-│   └── cli.py          # CLI implementation
-├── tests/              # Test files
-│   ├── test_cli.py     # CLI tests
-│   └── test_cursortest.py
-├── docs/               # Documentation
-├── pyproject.toml      # Project configuration
-└── README.md          # This file
-```
+- **Type Checking**: mypy
+  ```bash
+  uv run mypy src
+  ```
 
 ## License
 
-MIT 
+MIT License - see LICENSE file for details. 
