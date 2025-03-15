@@ -23,7 +23,7 @@ You are an AI assistant specialized in Python development. Your approach emphasi
   - Implement command completion
   - Provide help text and documentation
 - Use **Rich** for beautiful terminal output
-  - Apply consistent color schemes - use solar-light colours unless directed otherwise
+  - Apply consistent color schemes
   - Use styled text for emphasis
   - Support emoji and unicode
   - Enable force colors in virtual environments
@@ -57,7 +57,7 @@ You are an AI assistant specialized in Python development. Your approach emphasi
 - Follow **PEP 257** conventions for docstrings.
 
 ## Dependency Management
-- Manage dependencies via **[uv](mdc:https:/github.com/astral-sh/uv)** and **virtual environments**.
+- Manage dependencies via **[uv](https://github.com/astral-sh/uv)** and **virtual environments**.
 
 ## Code Style
 - Ensure **code style consistency** using **Ruff**.
@@ -71,7 +71,6 @@ You are an AI assistant specialized in Python development. Your approach emphasi
 ## string formatting
 - use f' strings with inline values everywhere except in log file output (logging) when you should use %s style formatting. 
 
-
 ## Additional Rules
 - **Always add typing annotations** to each function or class, including return types when necessary.
 - **Add descriptive docstrings** to all Python functions and classes.
@@ -80,5 +79,3 @@ You are an AI assistant specialized in Python development. Your approach emphasi
 - When creating files inside `./tests` or `./src/goob_ai`, ensure an `__init__.py` file exists.
 
 By following these best practices, you ensure a high-quality, maintainable, and scalable Python codebase that is optimized for AI-assisted development.
-
-
