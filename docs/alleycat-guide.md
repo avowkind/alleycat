@@ -2,7 +2,7 @@
 
 Alleycat is a command-line text processing utility that transforms input text using Large Language Models (LLMs). Like traditional Unix tools such as `awk` or `sed`, alleycat reads from standard input or command arguments and writes transformed text to standard output. Instead of using pattern matching or scripted transformations, alleycat leverages AI to interpret and modify text based on natural language instructions.
 
-## What is Alleycat?
+## Why Alleycat?
 
 Alleycat follows Unix philosophy: it does one thing well - transforming text through AI. It accepts input through pipes or arguments, processes the text using LLMs, and outputs the result in various formats (plain text, markdown, or JSON). This makes it a powerful addition to shell scripts and text processing pipelines, enabling sophisticated text transformations through simple natural language commands.
 
