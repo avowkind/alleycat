@@ -3,6 +3,7 @@
 import asyncio
 import sys
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 import typer
 from openai.types.responses.response_stream_event import ResponseStreamEvent
@@ -85,10 +86,23 @@ async def handle_stream(
             raise
 
 
+def read_instructions_file(filepath: str) -> str:
+    """Read instructions from a file."""
+    try:
+        path = Path(filepath)
+        if not path.is_file():
+            raise FileNotFoundError(f"Instructions file not found: {filepath}")
+        return path.read_text().strip()
+    except Exception as e:
+        logging.error(f"Error reading instructions file: {e}")
+        sys.exit(1)
+
+
 async def run_chat(
     prompt: str,
     settings: Settings,
     stream: bool = False,
+    instructions: str | None = None,
 ) -> None:
     """Run the chat interaction with the LLM."""
     # Create LLM provider
@@ -110,6 +124,7 @@ async def run_chat(
                     if settings.output_format == "json"
                     else None
                 ),
+                instructions=instructions,
             )
             await handle_stream(response_stream, settings)
         else:
@@ -121,6 +136,7 @@ async def run_chat(
                     if settings.output_format == "json"
                     else None
                 ),
+                instructions=instructions,
             )
 
             # Get response text, handling both string and structured responses
@@ -186,12 +202,22 @@ def chat(
     stream: bool = typer.Option(
         False, "--stream", "-s", help="Stream the response as it's generated"
     ),
+    instructions: str = typer.Option(
+        None,
+        "--instructions",
+        "-i",
+        help="System instructions (either a string or path to a file)",
+    ),
 ) -> None:
     """Send a prompt to the LLM and get a response.
 
     The prompt can be provided in two ways:
     1. As command line arguments: alleycat tell me a joke
     2. Via stdin: echo "tell me a joke" | alleycat
+
+    System instructions can be provided either directly or from a file:
+    1. Direct: alleycat -i "You are a helpful assistant" "tell me a joke"
+    2. From file: alleycat -i prompts/assistant.txt "tell me a joke"
     """
     try:
         # Set verbosity level
@@ -221,6 +247,15 @@ def chat(
         if output_format is not None:
             settings.output_format = output_format
 
+        # Handle instructions
+        instruction_text = None
+        if instructions:
+            # Check if instructions is a file path
+            if Path(instructions).exists():
+                instruction_text = read_instructions_file(instructions)
+            else:
+                instruction_text = instructions
+
         # Validate required settings
         if not settings.openai_api_key:
             logging.error(
@@ -231,7 +266,7 @@ def chat(
             sys.exit(1)
 
         # Run the chat interaction in a new event loop
-        asyncio.run(run_chat(prompt, settings, stream))
+        asyncio.run(run_chat(prompt, settings, stream, instruction_text))
 
     except Exception as e:
         logging.error(str(e))
