@@ -126,23 +126,40 @@ See also: COMPUTATION, ENGINE, PROGRAM (terms which, in our declining age, have 
 $ alleycat -i prompts/diderot.txt "What is Python?"
 ```
 ```
-PYTHON, (Mechanical Arts & Modern Philosophy) n.m. Programming language that takes its name from the Python serpent, a mythological creature from Greek antiquity. Invented by the philosopher-mechanic Guido van Rossum, this language represents the remarkable union between philosophical simplicity and practical utility in the modern art of programming.
+**Python (Substantif, masculin)**
 
-METHODICAL DEFINITION: System of instructions intended for calculating machines, characterized by its natural readability and pragmatic philosophy, expressed in its manifesto "The Zen of Python" (see: PHILOSOPHY OF LANGUAGES).
+*Définition:* Python est un langage de programmation interprété, à la fois puissant et 
+accessible, largement employé dans divers domaines de l'informatique et de la science des 
+données. Ce langage se distingue par sa syntaxe claire et lisible, favorisant ainsi une adoption
+aisée par les néophytes tout en offrant des capacités avancées pour les experts.
 
-HISTORY & EVOLUTION: Created in 1991, this language perfectly illustrates the progress of reason in the mechanical arts. It follows the principles of clarity and elegance that we, philosophers, seek in all expressions of thought.
+*Histoire et évolution:* Créé par le programmeur Guido van Rossum et publié pour la première 
+fois en 1991, Python tire son nom de la troupe humoristique britannique Monty Python, témoignage
+de l'esprit ludique de son créateur. Au fil des décennies, il a connu une adoption croissante, 
+devenant un pilier essentiel des technologies modernes grâce à sa flexibilité et son large 
+écosystème de bibliothèques.
 
-PRACTICAL OBSERVATIONS:
-- The simplicity of its syntax allows even apprentices to contribute to the mechanical arts
-- Its modular approach reflects the very organization of our Encyclopedia
-- The libraries (see: MODULES) represent the organized accumulation of knowledge
+*Observations scientifiques et philosophiques:* Python incarne l'idéal des Lumières en mettant 
+l'accent sur la raison et la simplicité. Sa conception encourage une approche rationnelle de la 
+résolution de problèmes, permettant aux savants et artisans du numérique de manipuler des 
+données complexes avec une efficacité accrue. La communauté qui le soutient valorise le partage 
+du savoir et l'amélioration continue, principes chers à notre époque éclairée.
 
-RELATIONSHIP WITH THE ARTS:
-The use of Python extends from astronomical calculations to visual arts, thus demonstrating the universality of rational principles across all domains of knowledge.
+*Arts et métiers pratiques:* Python est utilisé dans des domaines aussi variés que le 
+développement web, l'intelligence artificielle, l'analyse de données, et même les arts 
+numériques. Sa capacité à automatiser des tâches répétitives et à analyser de vastes ensembles 
+de données le rend indispensable pour les chercheurs et ingénieurs modernes.
 
-See also: PROGRAMMING, ALGORITHMS, MACHINE (Science of calculations), LOGIC (Modern Philosophy)
+*Raison et progrès:* Python, par sa nature ouverte et collaborative, représente un progrès pour 
+la société, permettant à chacun d'accéder aux outils nécessaires pour innover et contribuer au 
+bien commun. Il favorise l'éducation et la démocratisation du savoir technique, en écho à notre 
+ambition encyclopédique de disséminer la connaissance.
 
-N.B.: The growing adoption of this language in public instruction suggests a democratization of technical knowledge that we can only approve of.
+*Voir aussi:* Informatique, Langage de programmation, Science des données, Intelligence 
+artificielle, Automatisation, Partage du savoir.
+
+Ainsi, Python n'est pas simplement un outil technique, mais un vecteur de progrès et de 
+transformation sociale, fidèle aux idéaux de notre temps.
 ```
 
 3. Translating Diderot's French response to English using pipes:
