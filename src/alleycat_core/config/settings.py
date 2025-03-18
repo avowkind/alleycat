@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # LLM Provider settings
     provider: Literal["openai"] = "openai"
     openai_api_key: str = Field(default="", description="OpenAI API key")
-    model: str = Field(default="gpt-3.5-turbo", description="Model to use")
+    model: str = Field(default="gpt-4o-mini", description="Model to use")
     temperature: float = Field(
         default=0.7,
         description="Sampling temperature",

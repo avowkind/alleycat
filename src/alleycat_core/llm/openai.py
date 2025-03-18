@@ -20,10 +20,10 @@ class OpenAIConfig(BaseModel):
     """Configuration for OpenAI provider."""
 
     api_key: str
-    model: str = "gpt-3.5-turbo"  # Default to GPT-3.5 Turbo
+    model: str = "gpt-4o-mini"
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: int | None = None
-    response_format: dict[str, str] | None = None  # Add support for response format
+    response_format: dict[str, str] | None = None
     instructions: str | None = None  # System message for responses API
     tools: list[ToolParam] | None = None  # Tools for function calling
     include: list[ResponseIncludable] | None = None  # Additional data to include in response
@@ -68,8 +68,9 @@ class OpenAIProvider(LLMProvider):
                 params["include"] = include or self.config.include
             if tools or self.config.tools:
                 params["tools"] = tools or self.config.tools
-            if text:
-                params["text"] = text
+            if text or self.config.response_format:
+                # TODO: this is not how the text field works
+                params["text"] = text or {"format": "json"} if self.config.response_format else None
 
             params.update(kwargs)
 
@@ -109,8 +110,11 @@ class OpenAIFactory:
             if key != "api_key":  # Don't log sensitive information
                 logging.info(f"  {key}: [cyan]{value}[/cyan]")
 
+        # Handle output format configuration
         if kwargs.get("output_format") == "json":
             kwargs["response_format"] = {"type": "json"}
+            # Remove output_format as it's not part of OpenAIConfig
+            kwargs.pop("output_format", None)
 
         config = OpenAIConfig(**kwargs)
         return OpenAIProvider(config)
