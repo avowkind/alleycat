@@ -32,6 +32,8 @@ dev = [
     "pytest-cov>=4.1.0",
     "pytest-mock>=3.12.0",
     "ruff>=0.2.1",
+    "mypy>=1.8.0",
+    "types-PyYAML>=6.0.12.12",
 ]
 
 [tool.setuptools]
@@ -56,8 +58,15 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py312"
+ignore = ["D203", "D213"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
 
 [tool.ruff.lint]
 select = [

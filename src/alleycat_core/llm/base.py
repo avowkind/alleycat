@@ -1,10 +1,23 @@
-"""Base interfaces for LLM providers."""
+"""Base classes and types for LLM providers.
+
+This module defines the core interfaces and types for interacting with different
+LLM providers. It includes base classes for chat messages and responses, as well
+as a factory protocol for creating LLM provider instances.
+
+Author: Andrew Watkins <andrew@groat.nz>
+"""
 
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from typing import Any, Protocol
 
-from pydantic import BaseModel, Field
+from openai.types.responses.response_includable import ResponseIncludable
+from openai.types.responses.response_input_param import ResponseInputParam
+from openai.types.responses.response_stream_event import ResponseStreamEvent
+from openai.types.responses.tool_param import ToolParam
+from pydantic import BaseModel
+
+from .types import LLMResponse, ResponseFormat
 
 
 class Message(BaseModel):
@@ -14,46 +27,64 @@ class Message(BaseModel):
     content: str
 
 
-class ChatResponse(BaseModel):
-    """A response from the LLM."""
-
-    content: str
-    finish_reason: str | None = None
-    usage: dict[str, Any] | None = Field(
-        default=None,
-        description="Usage statistics from the LLM. Keys and value types may vary by provider."
-    )
-
-
 class LLMProvider(ABC):
     """Abstract base class for LLM providers."""
 
     @abstractmethod
-    async def complete(self, messages: list[Message], **kwargs) -> ChatResponse:
-        """Send a completion request to the LLM.
-        
+    async def respond(
+        self,
+        input: str | ResponseInputParam,
+        *,
+        stream: bool = False,
+        include: list[ResponseIncludable] | None = None,
+        instructions: str | None = None,
+        max_output_tokens: int | None = None,
+        tools: list[ToolParam] | None = None,
+        text: ResponseFormat = None,
+        **kwargs: Any,
+    ) -> LLMResponse | AsyncIterator[ResponseStreamEvent]:
+        """Send a request to the LLM.
+
         Args:
-            messages: List of messages in the conversation
+            input: The input text or structured input parameter
+            stream: Whether to stream the response
+            include: Additional data to include in response
+            instructions: System message for responses API
+            max_output_tokens: Maximum number of tokens to generate
+            tools: Tools for function calling
+            text: Text format configuration
             **kwargs: Additional provider-specific parameters
-            
+
         Returns:
-            ChatResponse containing the LLM's response
+            LLMResponse or AsyncIterator[ResponseStreamEvent] containing the LLM's response
 
         """
         pass
 
     @abstractmethod
-    async def complete_stream(
-        self, messages: list[Message], **kwargs
-    ) -> AsyncIterator[ChatResponse]:
-        """Stream a completion request from the LLM.
-        
+    async def complete(self, messages: list[Message], **kwargs: Any) -> LLMResponse:
+        """Send a completion request to the LLM.
+
         Args:
             messages: List of messages in the conversation
             **kwargs: Additional provider-specific parameters
-            
+
+        Returns:
+            LLMResponse containing the LLM's response
+
+        """
+        pass
+
+    @abstractmethod
+    async def complete_stream(self, messages: list[Message], **kwargs: Any) -> AsyncIterator[ResponseStreamEvent]:
+        """Stream a completion request from the LLM.
+
+        Args:
+            messages: List of messages in the conversation
+            **kwargs: Additional provider-specific parameters
+
         Yields:
-            ChatResponse chunks as they arrive from the LLM
+            ResponseStreamEvent chunks as they arrive from the LLM
 
         """
         pass
@@ -62,12 +93,12 @@ class LLMProvider(ABC):
 class LLMFactory(Protocol):
     """Protocol for LLM provider factories."""
 
-    def create(self, **kwargs) -> LLMProvider:
+    def create(self, **kwargs: Any) -> LLMProvider:
         """Create an LLM provider instance.
-        
+
         Args:
             **kwargs: Provider-specific configuration
-            
+
         Returns:
             An instance of an LLM provider
 

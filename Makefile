@@ -51,7 +51,7 @@ test: install-dev ## Run tests
 lint: install-dev ## Run linting checks
 	@echo "Running linters..."
 	@. $(VENV_BIN)/activate && uv run ruff check . --fix
-	@. $(VENV_BIN)/activate && uv run mypy src --fix-all
+	@. $(VENV_BIN)/activate && uv run mypy src
 
 prompt-test: install ## Run alleycat with the test prompt
 	@echo "Running alleycat with test prompt..."
