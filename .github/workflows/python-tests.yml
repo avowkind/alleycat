@@ -33,3 +33,5 @@ jobs:
         
       - name: Run tests
         run: uv run pytest tests -v
+        env:
+          ALLEYCAT_OPENAI_API_KEY: ${{ secrets.ALLEYCAT_OPENAI_API_KEY }}
