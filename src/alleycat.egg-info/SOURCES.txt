@@ -9,3 +9,4 @@ src/alleycat.egg-info/requires.txt
 src/alleycat.egg-info/top_level.txt
 src/alleycat_apps/__init__.py
 src/alleycat_core/__init__.py
+src/alleycat_core/logging.py

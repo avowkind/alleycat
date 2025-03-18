@@ -3,7 +3,6 @@
 ![AlleyCat](docs/alleycat.svg)
 Alleycat is a command-line text processing utility that transforms input text using Large Language Models (LLMs). Like traditional Unix tools such as `awk` or `sed`, alleycat reads from standard input or command arguments and writes transformed text to standard output. Instead of using pattern matching or scripted transformations, alleycat leverages AI to interpret and modify text based on natural language instructions.
 
->|<
 For comprehensive documentation, see [Alleycat Guide](docs/alleycat-guide.md).
 
 Warning: very new, not all tests passing, no build or deployment etc.
@@ -104,7 +103,7 @@ alleycat -i prompts/custom-style.txt "Your prompt here"
 
 Available options:
 
-- `--model`, `-m`: Choose LLM model (default: gpt-3.5-turbo, env: ALLEYCAT_MODEL)
+- `--model`, `-m`: Choose LLM model (default: gpt-4o-mini, env: ALLEYCAT_MODEL)
 - `--temperature`, `-t`: Sampling temperature 0.0-2.0 (default: 0.7)
 - `--format`, `-f`: Output format - text, markdown, or json (default: text)
 - `--api-key`: OpenAI API key (env: ALLEYCAT_OPENAI_API_KEY)

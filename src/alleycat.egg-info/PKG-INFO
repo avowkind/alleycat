@@ -12,6 +12,7 @@ Requires-Dist: rich>=13.7.0
 Requires-Dist: pydantic>=2.6.1
 Requires-Dist: pydantic-settings>=2.1.0
 Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: PyYAML>=6.0.1
 Provides-Extra: dev
 Requires-Dist: pytest>=8.0.0; extra == "dev"
 Requires-Dist: pytest-asyncio>=0.23.5; extra == "dev"
@@ -19,95 +20,185 @@ Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
 Requires-Dist: pytest-mock>=3.12.0; extra == "dev"
 Requires-Dist: ruff>=0.2.1; extra == "dev"
 
-# AlleyCat
+# AlleyCat - A command line tool for AI text processing
 
-A command line tool for chat conversations with LLMs.
+![AlleyCat](docs/alleycat.svg)
+Alleycat is a command-line text processing utility that transforms input text using Large Language Models (LLMs). Like traditional Unix tools such as `awk` or `sed`, alleycat reads from standard input or command arguments and writes transformed text to standard output. Instead of using pattern matching or scripted transformations, alleycat leverages AI to interpret and modify text based on natural language instructions.
 
-## Features
+For comprehensive documentation, see [Alleycat Guide](docs/alleycat-guide.md).
 
-- Single-shot mode for quick queries
-- Interactive mode for continuous conversations
-- Support for multiple LLM providers (currently OpenAI)
-- Configurable via environment variables, .env file, or command line
-- Rich output formatting (text, markdown, JSON)
-- Chat history management
+Warning: very new, not all tests passing, no build or deployment etc.
 
-## Installation
+## Project Structure
+
+The project follows a modern Python package structure with a `src` layout:
+
+```plaintext
+alleycat/
+├── src/
+│   ├── alleycat_apps/      # Application code
+│   │   └── cli/           # CLI interface
+│   └── alleycat_core/     # Core functionality
+├── tests/                 # Test files
+├── pyproject.toml         # Project configuration
+└── setup.py              # Development installation
+```
+
+### Package Organization
+
+- `alleycat_apps`: Contains application-specific code
+  - `cli`: Command-line interface implementation
+- `alleycat_core`: Core functionality and business logic
+  - `config`: Configuration management
+  - `llm`: LLM integration and API handling
+
+## Development Setup
+
+This project uses [uv](https://github.com/astral-sh/uv) as the package manager for faster and more reliable Python package management.
+
+### Prerequisites
+
+- Python 3.12 or higher
+- uv package manager
+
+### Installation
 
 1. Clone the repository:
+
    ```bash
-   git clone https://github.com/yourusername/alleycat.git
+   git clone <repository-url>
    cd alleycat
    ```
 
-2. Install using pip:
+2. Create and activate a virtual environment with uv:
+
    ```bash
-   pip install .
+   uv venv
+   source .venv/bin/activate  # On Unix/macOS
+   # or
+   .venv\Scripts\activate     # On Windows
    ```
 
-## Configuration
+3. Install the package in development mode:
 
-AlleyCat can be configured in several ways:
-
-1. Environment variables:
    ```bash
-   export ALLEYCAT_OPENAI_API_KEY="your-api-key"
-   export ALLEYCAT_MODEL="gpt-4"
+   uv pip install -e .
    ```
 
-2. .env file:
-   ```
-   ALLEYCAT_OPENAI_API_KEY=your-api-key
-   ALLEYCAT_MODEL=gpt-4
-   ```
+4. Install development dependencies:
 
-3. Command line options:
    ```bash
-   alleycat chat --api-key "your-api-key" --model "gpt-4" "Your prompt here"
+   uv pip install -e ".[dev]"
    ```
 
 ## Usage
 
-### Single-shot Mode
-
-Send a single prompt and get a response:
+The CLI tool can be run using `uv run` to ensure the correct Python environment but when running in the deployed folder you can also just use `alleycat` as it is in the pyproject.toml commands:
 
 ```bash
-alleycat chat "What is the meaning of life?"
+# Show help
+uv run alleycat --help
+
+# Basic usage
+uv run alleycat "Your prompt here"
+
+# With options
+uv run alleycat --format markdown --temperature 0.7 "Your prompt here"
 ```
 
-With options:
+### Command Line Options
+
 ```bash
-alleycat chat --model "gpt-4" --temperature 0.8 --format markdown "Explain quantum computing"
+# Basic usage
+alleycat "Your prompt here"
+
+# Pipe input
+echo "Your prompt" | alleycat
+
+# With formatting options
+alleycat --format markdown --temperature 0.7 "Your prompt here"
+
+# Using system instructions
+alleycat -i "You are a helpful assistant" "Your prompt here"
+alleycat -i prompts/custom-style.txt "Your prompt here"
 ```
 
-### Interactive Mode (Coming Soon)
+Available options:
 
-Start an interactive chat session:
+- `--model`, `-m`: Choose LLM model (default: gpt-4o-mini, env: ALLEYCAT_MODEL)
+- `--temperature`, `-t`: Sampling temperature 0.0-2.0 (default: 0.7)
+- `--format`, `-f`: Output format - text, markdown, or json (default: text)
+- `--api-key`: OpenAI API key (env: ALLEYCAT_OPENAI_API_KEY)
+- `--instructions`, `-i`: System instructions (string or file path)
+- `--verbose`, `-v`: Enable verbose debug output
+- `--stream`, `-s`: Stream the response as it's generated
 
-```bash
-alleycat chat --interactive
+Environment variables:
+
+- `ALLEYCAT_MODEL`: Default model to use
+- `ALLEYCAT_OPENAI_API_KEY`: OpenAI API key
+- `ALLEYCAT_TEMPERATURE`: Default temperature setting
+
+## Package Management
+
+The project uses setuptools for package management, configured in `pyproject.toml`:
+
+```toml
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["alleycat_apps", "alleycat_core"]
 ```
 
-## Development
+This configuration:
 
-1. Create a virtual environment:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # Linux/macOS
-   .venv\Scripts\activate     # Windows
-   ```
+- Uses the `src` layout for better package isolation
+- Explicitly declares packages to include
+- Supports development installation with `pip install -e .`
 
-2. Install development dependencies:
-   ```bash
-   pip install -e ".[dev]"
-   ```
+## Development Tools
 
-3. Run tests:
-   ```bash
-   pytest
-   ```
+- **Testing**: pytest with async support
+
+  ```bash
+  uv run pytest
+  ```
+
+- **Linting**: ruff
+
+  ```bash
+  uv run ruff check .
+  ```
+
+- **Type Checking**: mypy
+
+  ```bash
+  uv run mypy src
+  ```
 
 ## License
 
-MIT License 
+MIT License - see LICENSE file for details.
+
+## Why "Alleycat"?
+
+The name "Alleycat" draws inspiration from Unix tradition and the tool's nature:
+
+- Like the classic Unix tools `cat` and `tac`, it processes text through standard I/O
+- Like an alley cat, it's agile and adaptable, transforming text in various ways
+- It prowls through your text, hunting for meaning and responding with feline grace
+
+
+## Future Features - Coming Soon (perhaps)
+
+- Interactive mode for continuous conversations
+- Support for multiple LLM providers beyond OpenAI
+- Chat history management with local storage
+- Custom prompt templates
+- Streaming responses
+- Context window management
+- Model parameter presets
+- Command completion for shells

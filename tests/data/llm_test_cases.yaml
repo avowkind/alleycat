@@ -1,0 +1,103 @@
+# Test cases for LLM evaluation
+# Each test case defines the expected behavior and evaluation criteria
+
+basic_tests:
+  - name: "simple_number"
+    prompt: "Respond with the isolated number 42"
+    expected_patterns: ["^42$"]
+    min_score: 0.9
+    settings:
+      temperature: 0.1
+
+  - name: "simple_json"
+    prompt: 'Return a JSON object with {"number": 42}'
+    expected_patterns:
+      - '{\s*"number":\s*42\s*}'
+      - '"number":\s*42'
+    required_elements:
+      - "number"
+      - "42"
+    min_score: 0.8
+    settings:
+      temperature: 0.1
+
+instruction_tests:
+  - name: "role_definition"
+    prompt: "What is your role?"
+    expected_patterns:
+      - "mathematician"
+      - "numbers"
+    required_elements:
+      - "mathematician"
+      - "numbers"
+    min_score: 0.8
+    instructions: "You are a mathematician who loves working with numbers."
+    settings:
+      temperature: 0.1
+
+  - name: "style_instruction"
+    prompt: "Describe a cat"
+    expected_patterns:
+      - "haiku"
+      - "syllables?"
+    required_elements:
+      - "haiku"
+    min_score: 0.8
+    instructions: "Respond in haiku format"
+    settings:
+      temperature: 0.7
+
+tool_tests:
+  - name: "calculator"
+    prompt: "What is 21 * 2?"
+    expected_patterns: ["42"]
+    required_elements: ["42"]
+    min_score: 0.9
+    tools: ["calculator"]
+    settings:
+      temperature: 0.1
+
+  - name: "json_validator"
+    prompt: "Return valid JSON with number 42"
+    expected_patterns:
+      - '{\s*"number":\s*42\s*}'
+    required_elements:
+      - "number"
+      - "42"
+    forbidden_elements:
+      - "invalid"
+      - "error"
+    min_score: 0.9
+    tools: ["json_validator"]
+    settings:
+      temperature: 0.1
+
+complex_tests:
+  - name: "structured_response"
+    prompt: "Generate a user profile with name John and age 42"
+    expected_patterns:
+      - '"name":\s*"John"'
+      - '"age":\s*42'
+    required_elements:
+      - "name"
+      - "John"
+      - "age"
+      - "42"
+    min_score: 0.8
+    tools: ["json_validator"]
+    settings:
+      temperature: 0.1
+
+  - name: "creative_with_constraints"
+    prompt: "Write a short story about the number 42"
+    expected_patterns:
+      - "42"
+      - "[Ss]tory"
+    required_elements:
+      - "42"
+    forbidden_elements:
+      - "41"
+      - "43"
+    min_score: 0.7
+    settings:
+      temperature: 0.8 

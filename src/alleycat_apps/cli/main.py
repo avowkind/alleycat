@@ -43,15 +43,15 @@ async def handle_stream(
         try:
             async for event in stream:
                 match event.type:
-                    case "text_delta":
+                    case "response.output_text.delta":
                         accumulated_text += event.delta
-                    case "text_done":
+                    case "response.completed":
                         # Final text received, format and output
                         logging.output_console.print_json(accumulated_text)
                     case "error":
                         logging.error(f"Error in stream: {event.error.message}")
                         raise Exception(event.error.message)
-                    case "failed":
+                    case "response.failed":
                         logging.error(f"Stream failed: {event.error.message}")
                         raise Exception(event.error.message)
                     case _:
