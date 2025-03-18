@@ -1,0 +1,19 @@
+name: no-mock-llm
+description: Do not mock LLM API calls in tests. Tests should use real API calls to ensure actual LLM behavior is tested.
+glob: "tests/**/*.py"
+rules:
+  - When writing or modifying tests that involve LLM API calls:
+      - DO NOT mock the LLM API responses or client
+      - DO NOT mock OpenAI or other LLM provider classes
+      - DO use real API calls with actual credentials
+      - DO set appropriate environment variables for API keys
+      - DO use controlled prompts and evaluation criteria
+      - DO handle rate limits and API errors gracefully
+
+rationale: |
+  Mocking LLM API calls defeats the purpose of testing the actual LLM behavior.
+  Tests should verify that:
+  1. The LLM provides appropriate responses to prompts
+  2. The system handles real API responses correctly
+  3. Response evaluation works with actual LLM output
+  4. Error handling works with real API errors 

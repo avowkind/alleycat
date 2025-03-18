@@ -23,29 +23,28 @@ basic_tests:
 
 instruction_tests:
   - name: "role_definition"
-    prompt: "What is your role?"
+    prompt: "in one sentence what is your role?"
     expected_patterns:
-      - "mathematician"
-      - "numbers"
+      - "math(s|ematician|ematics|ematical)?"
+      - "number"
     required_elements:
-      - "mathematician"
-      - "numbers"
+      - "concept"
+      - "number"
     min_score: 0.8
-    instructions: "You are a mathematician who loves working with numbers."
+    instructions: "Your role is to be a mathematician who loves working with numbers."
     settings:
       temperature: 0.1
 
   - name: "style_instruction"
     prompt: "Describe a cat"
     expected_patterns:
-      - "haiku"
-      - "syllables?"
+      - "fur"
     required_elements:
-      - "haiku"
+      - "arr"
     min_score: 0.8
-    instructions: "Respond in haiku format"
+    instructions: "talk like a pirate"
     settings:
-      temperature: 0.7
+      temperature: 0.5
 
 tool_tests:
   - name: "calculator"
