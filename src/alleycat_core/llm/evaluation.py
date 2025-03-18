@@ -86,7 +86,7 @@ class ResponseEvaluator:
 
         if not (0 <= similarity_threshold <= 1):
             raise ValueError("Similarity threshold must be between 0 and 1")
-        if not (exact_match_weight + semantic_match_weight == 1.0):
+        if exact_match_weight + semantic_match_weight != 1.0:
             raise ValueError("Weights must sum to 1.0")
 
     def evaluate(self, response_text: str, test_case: LLMTestCase) -> ResponseEvaluation:
