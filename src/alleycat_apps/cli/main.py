@@ -1,9 +1,20 @@
-"""AlleyCat CLI application."""
+"""AlleyCat CLI application.
+
+This module contains the CLI application for AlleyCat.
+
+It uses the `typer` library to define the CLI and the
+`openai.types.responses.response_stream_event.ResponseStreamEvent`
+to define the types for the OpenAI API.
+
+Author: Andrew Watkins <andrew@groat.nz>
+"""
 
 import asyncio
+import enum
 import sys
 from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import Any, TypeGuard
 
 import typer
 from openai.types.responses.response_stream_event import ResponseStreamEvent
@@ -14,6 +25,7 @@ from rich.markdown import Markdown
 from alleycat_core import logging
 from alleycat_core.config.settings import Settings
 from alleycat_core.llm import OpenAIFactory
+from alleycat_core.llm.types import ResponseFormat
 
 console = Console()
 error_console = Console(stderr=True)
@@ -25,6 +37,41 @@ app = typer.Typer(
 )
 
 
+class OutputFormat(str, enum.Enum):
+    """Output format options."""
+
+    TEXT = "text"
+    MARKDOWN = "markdown"
+    JSON = "json"
+
+
+# Define command options at module level
+model_option = typer.Option(None, "--model", "-m", help="Model to use", envvar="ALLEYCAT_MODEL")
+temperature_option = typer.Option(
+    None,
+    "--temperature",
+    "-t",
+    help="Sampling temperature",
+    min=0.0,
+    max=2.0,
+)
+format_option = typer.Option(
+    None,
+    "--format",
+    "-f",
+    help="Output format (text, markdown, json)",
+)
+api_key_option = typer.Option(None, "--api-key", help="OpenAI API key", envvar="ALLEYCAT_OPENAI_API_KEY")
+verbose_option = typer.Option(False, "--verbose", "-v", help="Enable verbose debug output")
+stream_option = typer.Option(False, "--stream", "-s", help="Stream the response as it's generated")
+instructions_option = typer.Option(
+    None,
+    "--instructions",
+    "-i",
+    help="System instructions (either a string or path to a file)",
+)
+
+
 def get_prompt_from_stdin() -> str:
     """Read prompt from stdin if available."""
     if not sys.stdin.isatty():
@@ -32,9 +79,17 @@ def get_prompt_from_stdin() -> str:
     return ""
 
 
-async def handle_stream(
-    stream: AsyncIterator[ResponseStreamEvent], settings: Settings
-) -> None:
+def is_text_delta_event(event: ResponseStreamEvent) -> TypeGuard[Any]:
+    """Check if event is a text delta event."""
+    return event.type == "response.output_text.delta" and hasattr(event, "delta")
+
+
+def is_error_event(event: ResponseStreamEvent) -> TypeGuard[Any]:
+    """Check if event is an error event."""
+    return event.type in ("error", "response.failed") and hasattr(event, "error") and hasattr(event.error, "message")
+
+
+async def handle_stream(stream: AsyncIterator[ResponseStreamEvent], settings: Settings) -> None:
     """Handle streaming response from the LLM."""
     accumulated_text = ""
 
@@ -42,21 +97,15 @@ async def handle_stream(
         # For JSON, we need to accumulate the entire response
         try:
             async for event in stream:
-                match event.type:
-                    case "response.output_text.delta":
-                        accumulated_text += event.delta
-                    case "response.completed":
-                        # Final text received, format and output
-                        logging.output_console.print_json(accumulated_text)
-                    case "error":
-                        logging.error(f"Error in stream: {event.error.message}")
-                        raise Exception(event.error.message)
-                    case "response.failed":
-                        logging.error(f"Stream failed: {event.error.message}")
-                        raise Exception(event.error.message)
-                    case _:
-                        # Ignore other event types for now
-                        pass
+                if is_text_delta_event(event):
+                    accumulated_text += event.delta
+                elif event.type == "response.completed":
+                    # Final text received, format and output
+                    logging.output_console.print_json(accumulated_text)
+                elif is_error_event(event):
+                    logging.error(f"Error in stream: {event.error.message}")
+                    raise Exception(event.error.message)
+                # Ignore other event types for now
         except Exception as e:
             logging.error(f"Error during streaming: {str(e)}")
             raise
@@ -65,22 +114,16 @@ async def handle_stream(
         try:
             with Live(console=logging.output_console, refresh_per_second=4) as live:
                 async for event in stream:
-                    match event.type:
-                        case "response.output_text.delta":
-                            accumulated_text += event.delta
-                            if settings.output_format == "markdown":
-                                live.update(Markdown(accumulated_text))
-                            else:
-                                live.update(accumulated_text)
-                        case "error":
-                            logging.error(f"Error in stream: {event.error.message}")
-                            raise Exception(event.error.message)
-                        case "response.failed":
-                            logging.error(f"Stream failed: {event.error.message}")
-                            raise Exception(event.error.message)
-                        case _:
-                            # Ignore other event types for now
-                            pass
+                    if is_text_delta_event(event):
+                        accumulated_text += event.delta
+                        if settings.output_format == "markdown":
+                            live.update(Markdown(accumulated_text))
+                        else:
+                            live.update(accumulated_text)
+                    elif is_error_event(event):
+                        logging.error(f"Error in stream: {event.error.message}")
+                        raise Exception(event.error.message)
+                    # Ignore other event types for now
         except Exception as e:
             logging.error(f"Error during streaming: {str(e)}")
             raise
@@ -113,54 +156,59 @@ async def run_chat(
         temperature=settings.temperature,
     )
 
+    # Prepare response format based on settings
+    response_format: ResponseFormat = None
+    if settings.output_format == "json":
+        response_format = {"format": "json"}
+
     try:
         if stream:
             # Use the respond method with streaming
             response_stream = await llm.respond(
                 input=prompt,
                 stream=True,
-                text=(
-                    {"format": settings.output_format}
-                    if settings.output_format == "json"
-                    else None
-                ),
+                text=response_format,
                 instructions=instructions,
             )
-            await handle_stream(response_stream, settings)
+            # Since the respond method can return either a stream or a regular response,
+            # we need to ensure we have a stream here
+            if isinstance(response_stream, AsyncIterator):
+                await handle_stream(response_stream, settings)
+            else:
+                # This should never happen with stream=True
+                raise TypeError("Expected streaming response but got non-streaming response")
         else:
             # Use the respond method without streaming
             response = await llm.respond(
                 input=prompt,
-                text=(
-                    {"format": settings.output_format}
-                    if settings.output_format == "json"
-                    else None
-                ),
+                text=response_format,
                 instructions=instructions,
             )
 
-            # Get response text, handling both string and structured responses
-            response_text = response.output_text
+            # Since the respond method can return either a stream or a regular response,
+            # we need to ensure we have a regular response here
+            if not isinstance(response, AsyncIterator):
+                # Get response text from the LLMResponse object
+                response_text = response.output_text
 
-            # Format and display response
-            if settings.output_format == "markdown":
-                logging.output(Markdown(response_text))
-            elif settings.output_format == "json":
-                logging.output_console.print_json(response_text)
+                # Format and display response
+                if settings.output_format == "markdown":
+                    logging.output(str(Markdown(response_text)))
+                elif settings.output_format == "json":
+                    logging.output_console.print_json(response_text)
+                else:
+                    logging.output(response_text)
+
+                if logging.is_verbose() and response.usage:
+                    total = response.usage.total_tokens
+                    prompt_tokens = response.usage.prompt_tokens
+                    completion_tokens = response.usage.completion_tokens
+                    logging.info(
+                        f"Tokens used: [cyan]{total}[/cyan] (prompt: {prompt_tokens}, completion: {completion_tokens})"
+                    )
             else:
-                logging.output(response_text)
-
-            if logging.is_verbose() and response.usage:
-                total = getattr(response.usage, "total_tokens", "unknown")
-                prompt_tokens = getattr(response.usage, "prompt_tokens", "unknown")
-                completion_tokens = getattr(
-                    response.usage, "completion_tokens", "unknown"
-                )
-                logging.info(
-                    f"Tokens used: [cyan]{total}[/cyan] "
-                    f"(prompt: {prompt_tokens}, "
-                    f"completion: {completion_tokens})"
-                )
+                # This should never happen with stream=False
+                raise TypeError("Expected non-streaming response but got streaming response")
     except Exception as e:
         logging.error(str(e))
         if logging.is_verbose():
@@ -171,43 +219,16 @@ async def run_chat(
         raise
 
 
-@app.command(
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
-)
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def chat(
     ctx: typer.Context,
-    model: str = typer.Option(
-        None, "--model", "-m", help="Model to use", envvar="ALLEYCAT_MODEL"
-    ),
-    temperature: float | None = typer.Option(
-        None,
-        "--temperature",
-        "-t",
-        help="Sampling temperature",
-        min=0.0,
-        max=2.0,
-    ),
-    output_format: str | None = typer.Option(
-        None,
-        "--format",
-        "-f",
-        help="Output format (text, markdown, json)",
-    ),
-    api_key: str | None = typer.Option(
-        None, "--api-key", help="OpenAI API key", envvar="ALLEYCAT_OPENAI_API_KEY"
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable verbose debug output"
-    ),
-    stream: bool = typer.Option(
-        False, "--stream", "-s", help="Stream the response as it's generated"
-    ),
-    instructions: str = typer.Option(
-        None,
-        "--instructions",
-        "-i",
-        help="System instructions (either a string or path to a file)",
-    ),
+    model: str = model_option,
+    temperature: float | None = temperature_option,
+    output_format: OutputFormat | None = format_option,
+    api_key: str | None = api_key_option,
+    verbose: bool = verbose_option,
+    stream: bool = stream_option,
+    instructions: str = instructions_option,
 ) -> None:
     """Send a prompt to the LLM and get a response.
 
@@ -245,7 +266,7 @@ def chat(
         if temperature is not None:
             settings.temperature = temperature
         if output_format is not None:
-            settings.output_format = output_format
+            settings.output_format = output_format.value  # Use the value from the enum
 
         # Handle instructions
         instruction_text = None

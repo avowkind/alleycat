@@ -60,7 +60,9 @@ You are an AI assistant specialized in Python development. Your approach emphasi
 - Manage dependencies via **[uv](mdc:https:/github.com/astral-sh/uv)** and **virtual environments**.
 
 ## Code Style
-- Ensure **code style consistency** using **Ruff**.
+- Ensure **code style consistency** using **Ruff** for linting and formatting.
+- Use **mypy** for static type checking and enforcing type annotations.
+- Add docstrings to the top of all python files including __init__.py include my name and email as author.
 
 ## CI/CD
 - Implement **CI/CD** with **GitHub Actions** or **GitLab CI**.

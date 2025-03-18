@@ -6,16 +6,18 @@ from pathlib import Path
 
 import pytest
 from dotenv import load_dotenv
+from pytest import Config, Item, Parser
 
 # Import fixtures to make them available to all tests
+from .fixtures.cli_fixtures import cli_runner  # noqa: F401
 from .fixtures.openai_fixtures import (  # noqa: F401
-    mock_openai_response,
     mock_openai_client,
+    mock_openai_response,
     openai_config,
 )
 
 
-def pytest_configure():
+def pytest_configure() -> None:
     """Configure pytest - load environment variables before running tests."""
     load_dotenv()
 
@@ -55,17 +57,12 @@ def setup_test_env() -> Generator[None, None, None]:
         test_config_dir.rmdir()
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser: Parser) -> None:
     """Add custom command line options."""
-    parser.addoption(
-        "--api",
-        action="store_true",
-        default=False,
-        help="run tests that make API calls"
-    )
+    parser.addoption("--api", action="store_true", default=False, help="run tests that make API calls")
 
 
-def pytest_collection_modifyitems(config, items):
+def pytest_collection_modifyitems(config: Config, items: list[Item]) -> None:
     """Skip tests marked as requiring API unless --api is specified."""
     if not config.getoption("--api"):
         skip_api = pytest.mark.skip(reason="need --api option to run tests that make API calls")

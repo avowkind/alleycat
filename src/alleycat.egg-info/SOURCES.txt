@@ -1,5 +1,6 @@
 README.md
 pyproject.toml
+setup.cfg
 setup.py
 src/alleycat.egg-info/PKG-INFO
 src/alleycat.egg-info/SOURCES.txt
