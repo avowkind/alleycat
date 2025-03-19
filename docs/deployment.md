@@ -148,4 +148,45 @@ def clean_env(monkeypatch):
     monkeypatch.setattr(Path, "read_text", lambda *args, **kwargs: "")
 ```
 
-This ensures your tests remain isolated from the environment and are reproducible. 
+This ensures your tests remain isolated from the environment and are reproducible.
+
+#### Version Bumping in GitHub Actions
+
+AlleyCat uses a dedicated Python script located in `scripts/bump_version.py` for reliable version management in GitHub Actions. This approach provides:
+
+1. Better maintainability by separating logic from workflow configuration
+2. Improved readability and testability
+3. More robust semantic version handling
+
+The script handles:
+- Reading the current version from pyproject.toml
+- Parsing semantic version components
+- Incrementing based on the bump type (major, minor, patch)
+- Updating the pyproject.toml file
+- Setting GitHub Actions outputs
+
+Usage in GitHub Actions:
+```yaml
+- name: Bump version
+  id: bump-version
+  run: |
+    python scripts/bump_version.py ${{ steps.bump-type.outputs.type }}
+```
+
+For local testing or manual version bumping, you can run:
+```bash
+# Dry run to see what would happen
+python scripts/bump_version.py --dry-run
+
+# Actually bump the patch version
+python scripts/bump_version.py patch
+
+# Bump to a minor version
+python scripts/bump_version.py minor
+```
+
+This approach avoids common issues with shell-based version manipulation:
+- More robust parsing of semantic versions
+- Better handling of file content
+- Reliable regex-based replacement
+- Proper error handling 
