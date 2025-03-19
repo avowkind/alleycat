@@ -162,12 +162,14 @@ A dedicated Python script located in `scripts/bump_version.py` provides reliable
 4. Compliance with repository branch protection rules
 
 The script handles:
+
 - Reading the current version from pyproject.toml
 - Parsing semantic version components
 - Incrementing based on the bump type (major, minor, patch)
 - Updating the pyproject.toml file
 
 To bump the version:
+
 ```bash
 # Bump patch version (default)
 make bump-version
@@ -181,6 +183,7 @@ python scripts/bump_version.py --dry-run
 ```
 
 **Workflow:**
+
 1. Make your changes in a feature branch
 2. Run `make bump-version` with appropriate type
 3. Commit the version change along with your other changes
