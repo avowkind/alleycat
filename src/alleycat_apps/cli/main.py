@@ -17,15 +17,16 @@ from pathlib import Path
 from typing import Any, TypeGuard
 
 import typer
-from alleycat_core import logging
-from alleycat_core.config.settings import Settings
-from alleycat_core.llm import OpenAIFactory
-from alleycat_core.llm.types import ResponseFormat
 from openai.types.responses.response_stream_event import ResponseStreamEvent
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.prompt import Prompt
+
+from alleycat_core import logging
+from alleycat_core.config.settings import Settings
+from alleycat_core.llm import OpenAIFactory
+from alleycat_core.llm.types import ResponseFormat
 
 console = Console()
 error_console = Console(stderr=True)
