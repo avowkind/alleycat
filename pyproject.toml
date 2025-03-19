@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "alleycat"
-version = "0.1.0"
+version = "0.1.2"
 description = "A command line tool for chat conversations with LLMs"
 authors = [
-    {name = "Andrew", email = "andrew@example.com"},
+    {name = "Andrew", email = "andrew@groat.nz"},
 ]
 dependencies = [
     "openai>=1.12.0",
@@ -21,6 +21,17 @@ dependencies = [
 requires-python = ">=3.12"
 readme = "README.md"
 license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Text Processing",
+    "Topic :: Utilities",
+]
 
 [project.scripts]
 alleycat = "alleycat_apps.cli.main:app"
@@ -34,11 +45,21 @@ dev = [
     "ruff>=0.2.1",
     "mypy>=1.8.0",
     "types-PyYAML>=6.0.12.12",
+    "build>=1.2.2.post1",
+    "twine>=6.1.0",
 ]
 
 [tool.setuptools]
+include-package-data = true
 package-dir = {"" = "src"}
-packages = ["alleycat_apps", "alleycat_core"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["alleycat_apps*", "alleycat_core*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+"*" = ["*.json", "*.yaml", "*.yml", "*.txt", "*.md"]
 
 [tool.black]
 line-length = 88
@@ -78,4 +99,9 @@ select = [
     "C4",  # flake8-comprehensions
     "UP",  # pyupgrade
     "D",   # pydocstyle
-] 
+]
+
+[project.urls]
+"Homepage" = "https://github.com/avowkind/alleycat"
+"Bug Tracker" = "https://github.com/avowkind/alleycat/issues"
+"Documentation" = "https://github.com/avowkind/alleycat/tree/main/docs" 

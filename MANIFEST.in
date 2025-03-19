@@ -1,0 +1,6 @@
+include LICENSE
+include README.md
+include pyproject.toml
+
+recursive-include src/alleycat_apps *
+recursive-include src/alleycat_core * 

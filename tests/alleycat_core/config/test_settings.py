@@ -21,8 +21,15 @@ def clean_env(monkeypatch: "MonkeyPatch") -> None:
     for env_var in env_vars:
         monkeypatch.delenv(env_var, raising=False)
 
+    # Clear PyPI-related environment variables that might interfere with tests
+    for env_var in ["PYPI_TOKEN", "PYPI_USERNAME"]:
+        monkeypatch.delenv(env_var, raising=False)
+
     # Mock the existence of .env file
     monkeypatch.setattr(Path, "exists", lambda _: False)
+
+    # Ensure Settings doesn't try to load from a real .env file
+    monkeypatch.setattr(Path, "read_text", lambda *args, **kwargs: "")
 
 
 def test_default_settings(clean_env: None) -> None:
@@ -46,7 +53,7 @@ def test_environment_override(monkeypatch: "MonkeyPatch") -> None:
         "ALLEYCAT_MODEL": "gpt-4",
         "ALLEYCAT_TEMPERATURE": "0.5",
         "ALLEYCAT_MAX_TOKENS": "1000",
-        "ALLEYCAT_OUTPUT_FORMAT": "markdown"
+        "ALLEYCAT_OUTPUT_FORMAT": "markdown",
     }
 
     for key, value in env_vars.items():

@@ -1,0 +1,89 @@
+name: Update Python Classifiers
+
+on:
+  schedule:
+    # Run every month to check for new Python versions
+    - cron: '0 0 1 * *'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  update-classifiers:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install dependencies
+        run: |
+          uv pip install toml-cli
+          # Ensure GitHub CLI is available for PR creation
+          if ! command -v gh &> /dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y gh
+          fi
+
+      - name: Check and update Python classifiers
+        id: check-update
+        run: |
+          # Get min Python version from requires-python
+          MIN_PY=$(toml get pyproject.toml project.requires-python | tr -d '"' | sed 's/>=//g')
+          MIN_PY_MAJOR=$(echo $MIN_PY | cut -d. -f1)
+          MIN_PY_MINOR=$(echo $MIN_PY | cut -d. -f2)
+          
+          # Get current classifiers
+          CLASSIFIERS=$(toml get pyproject.toml project.classifiers)
+          
+          # Check for Python 3.x classifiers
+          UPDATED=false
+          
+          for MINOR in {8..14}; do
+            # Skip versions lower than minimum Python version
+            if [ $MIN_PY_MAJOR -eq 3 ] && [ $MINOR -lt $MIN_PY_MINOR ]; then
+              continue
+            fi
+            
+            CLASSIFIER="\"Programming Language :: Python :: 3.$MINOR\""
+            if ! echo "$CLASSIFIERS" | grep -q "$CLASSIFIER"; then
+              # Only add classifier if Python version exists (or is anticipated)
+              if [ $MINOR -le 12 ] || [ $MINOR -le 14 ]; then  # Support up to projected Python 3.14
+                echo "Missing classifier for Python 3.$MINOR"
+                # Since toml-cli doesn't support array modification well, using sed
+                sed -i "/\"Programming Language :: Python :: 3/a \ \ \ \ \"Programming Language :: Python :: 3.$MINOR\"," pyproject.toml
+                UPDATED=true
+              fi
+            fi
+          done
+          
+          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
+
+      - name: Create PR if classifiers updated
+        if: steps.check-update.outputs.updated == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          BRANCH_NAME="update-python-classifiers-$(date +'%Y%m%d')"
+          git checkout -b $BRANCH_NAME
+          
+          git add pyproject.toml
+          git commit -m "chore: Update Python version classifiers"
+          git push origin $BRANCH_NAME
+          
+          gh pr create --title "Update Python version classifiers" \
+            --body "This PR adds missing Python version classifiers to pyproject.toml" \
+            --base main \
+            --head $BRANCH_NAME
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
