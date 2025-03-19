@@ -1,4 +1,4 @@
-.PHONY: venv install install-dev clean build run test lint prompt-test help
+.PHONY: venv install install-dev clean build run test lint prompt-test help build-dist publish-test publish
 
 # Use bash for shell commands
 SHELL := /bin/bash
@@ -44,6 +44,31 @@ clean: ## Clean build artifacts and virtual environment
 build: clean install ## Clean and rebuild the package
 	@echo "Build complete"
 
+# Find all source files
+PACKAGE_FILES := $(shell find src -type f -name "*.py") pyproject.toml README.md
+
+dist: $(PACKAGE_FILES) install-dev ## Build distribution packages if source files have changed
+	@echo "Building distribution packages..."
+	@. $(VENV_BIN)/activate && uv run python -m build
+	@touch dist
+
+build-dist: dist ## Build distribution packages (only if needed)
+	@echo "Distribution packages are up to date"
+
+publish-test: dist ## Upload package to TestPyPI
+	@echo "Uploading package to TestPyPI..."
+	@. $(VENV_BIN)/activate && \
+		if [ -f .env ]; then export $$(grep -v '^#' .env | xargs); fi && \
+		echo "Using token from TESTPYPI_TOKEN (not showing value for security)" && \
+		twine upload --repository-url https://test.pypi.org/legacy/ dist/* -u "__token__" -p $$TESTPYPI_TOKEN --verbose
+
+publish: dist ## Upload package to PyPI
+	@echo "Uploading package to PyPI..."
+	@. $(VENV_BIN)/activate && \
+		if [ -f .env ]; then export $$(grep -v '^#' .env | xargs); fi && \
+		echo "Using token from PYPI_TOKEN (not showing value for security)" && \
+		twine upload dist/* -u "__token__" -p $$PYPI_TOKEN
+
 test: install-dev ## Run tests
 	@echo "Running tests..."
 	@. $(VENV_BIN)/activate && uv run pytest
@@ -55,7 +80,7 @@ lint: install-dev ## Run linting checks
 
 prompt-test: install ## Run alleycat with the test prompt
 	@echo "Running alleycat with test prompt..."
-	@. $(VENV_BIN)/activate && cat prompts/access-log.md | uv run alleycat --format json
+	@. $(VENV_BIN)/activate && cat prompts/access-log.md | uv run alleycat 
 
 run: install ## Run alleycat with arguments (usage: make run ARGS="your prompt here")
 	@. $(VENV_BIN)/activate && uv run alleycat $(ARGS) 

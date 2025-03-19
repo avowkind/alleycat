@@ -30,6 +30,47 @@ alleycat/
   - `config`: Configuration management
   - `llm`: LLM integration and API handling
 
+## Installation
+
+AlleyCat can be installed in several ways depending on your needs:
+
+### From PyPI (Recommended)
+
+Install using `pip` with UV:
+
+```bash
+uv pip install alleycat
+```
+
+Or using `pipx` for isolated CLI tool installation (recommended for command-line tools):
+
+```bash
+pipx install alleycat
+```
+
+### From Source
+
+Install directly from the GitHub repository:
+
+```bash
+uv pip install git+https://github.com/avowkind/alleycat.git
+```
+
+### Local Installation
+
+If you've cloned the repository or downloaded the source:
+
+```bash
+cd alleycat
+uv pip install .
+```
+
+After installation, you can run AlleyCat from anywhere with:
+
+```bash
+alleycat --help
+```
+
 ## Development Setup
 
 This project uses [uv](https://github.com/astral-sh/uv) as the package manager for faster and more reliable Python package management.
@@ -156,6 +197,35 @@ This configuration:
   ```bash
   uv run mypy src
   ```
+
+## Continuous Integration and Deployment
+
+AlleyCat uses GitHub Actions for automated testing and deployment:
+
+### CI Workflow
+
+A CI workflow runs on all pull requests and pushes to the main branch:
+
+- Runs tests on Python 3.10 through 3.12
+- Lints code with Ruff
+- Type checks with mypy
+- Verifies the package builds correctly
+
+### Automated Releases
+
+AlleyCat uses semantic versioning with automated version bumping and deployment:
+
+1. When a pull request is merged to main, a GitHub Action:
+   - Determines the version bump type based on PR title tags:
+     - `[major]` for breaking changes (1.0.0 → 2.0.0)
+     - `[minor]` for new features (1.0.0 → 1.1.0)
+     - `[patch]` for bug fixes (default) (1.0.0 → 1.0.1)
+   - Bumps the version in pyproject.toml
+   - Commits and tags the new version
+   - Builds and publishes the package to PyPI
+   - Creates a GitHub release
+
+To use this feature, include `[major]`, `[minor]`, or `[patch]` in your PR title.
 
 ## License
 

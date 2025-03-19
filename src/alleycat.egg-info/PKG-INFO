@@ -1,11 +1,24 @@
 Metadata-Version: 2.2
 Name: alleycat
-Version: 0.1.0
+Version: 0.1.2
 Summary: A command line tool for chat conversations with LLMs
 Author-email: Andrew <andrew@example.com>
 License: MIT
-Requires-Python: >=3.12
+Project-URL: Homepage, https://github.com/avowkind/alleycat
+Project-URL: Bug Tracker, https://github.com/avowkind/alleycat/issues
+Project-URL: Documentation, https://github.com/avowkind/alleycat/tree/main/docs
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: End Users/Desktop
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Text Processing
+Classifier: Topic :: Utilities
+Requires-Python: >=3.8
 Description-Content-Type: text/markdown
+License-File: LICENSE
 Requires-Dist: openai>=1.12.0
 Requires-Dist: typer>=0.9.0
 Requires-Dist: rich>=13.7.0
@@ -21,6 +34,8 @@ Requires-Dist: pytest-mock>=3.12.0; extra == "dev"
 Requires-Dist: ruff>=0.2.1; extra == "dev"
 Requires-Dist: mypy>=1.8.0; extra == "dev"
 Requires-Dist: types-PyYAML>=6.0.12.12; extra == "dev"
+Requires-Dist: build>=1.2.2.post1; extra == "dev"
+Requires-Dist: twine>=6.1.0; extra == "dev"
 
 # AlleyCat - A command line tool for AI text processing
 
@@ -53,6 +68,47 @@ alleycat/
 - `alleycat_core`: Core functionality and business logic
   - `config`: Configuration management
   - `llm`: LLM integration and API handling
+
+## Installation
+
+AlleyCat can be installed in several ways depending on your needs:
+
+### From PyPI (Recommended)
+
+Install using `pip` with UV:
+
+```bash
+uv pip install alleycat
+```
+
+Or using `pipx` for isolated CLI tool installation (recommended for command-line tools):
+
+```bash
+pipx install alleycat
+```
+
+### From Source
+
+Install directly from the GitHub repository:
+
+```bash
+uv pip install git+https://github.com/avowkind/alleycat.git
+```
+
+### Local Installation
+
+If you've cloned the repository or downloaded the source:
+
+```bash
+cd alleycat
+uv pip install .
+```
+
+After installation, you can run AlleyCat from anywhere with:
+
+```bash
+alleycat --help
+```
 
 ## Development Setup
 
