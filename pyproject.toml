@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "alleycat"
-version = "0.1.4"
+version = "0.2.0"
 description = "A command line tool for chat conversations with LLMs"
 authors = [
     {name = "Andrew", email = "andrew@groat.nz"},
@@ -99,6 +99,11 @@ select = [
     "C4",  # flake8-comprehensions
     "UP",  # pyupgrade
     "D",   # pydocstyle
+]
+
+[dependency-groups]
+dev = [
+    "tomli>=2.2.1",
 ]
 
 [project.urls]
