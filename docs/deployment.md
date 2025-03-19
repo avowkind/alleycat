@@ -73,6 +73,45 @@ This usually indicates that a required command-line tool is not available. Here'
 
 Remember that each step in GitHub Actions runs in its own shell session, so dependencies installed in one step are available to subsequent steps.
 
+#### Build Artifacts Interfering with Git Operations
+
+When running CI/CD workflows, build artifacts can sometimes cause issues with Git operations, especially when trying to commit changes. You might see errors like:
+
+```
+Changes not staged for commit:
+  modified:   src/alleycat.egg-info/SOURCES.txt
+  modified:   uv.lock
+no changes added to commit
+```
+
+To handle this:
+
+1. **Clean artifacts before committing**:
+   ```yaml
+   - name: Clean build artifacts
+     run: |
+       rm -rf dist/
+       rm -rf src/*.egg-info/
+       rm -f uv.lock
+   ```
+
+2. **Ensure proper .gitignore patterns**:
+   Make sure your `.gitignore` file includes patterns for common build artifacts:
+   ```
+   # Python build artifacts
+   dist/
+   build/
+   *.egg-info/
+   uv.lock
+   ```
+
+3. **Proper workflow ordering**:
+   - Clean or reset the repository before version bumping
+   - Commit version changes first
+   - Build and publish packages after commits are pushed
+
+Remember that GitHub Actions workflows maintain state between steps, so files generated in early steps (like initial dependency installation) can interfere with later steps.
+
 ## .env File Handling
 
 The application's Settings class is configured to:
