@@ -179,6 +179,13 @@ alleycat --format markdown --temperature 0.7 "Your prompt here"
 # Using system instructions
 alleycat -i "You are a helpful assistant" "Your prompt here"
 alleycat -i prompts/custom-style.txt "Your prompt here"
+
+# Interactive chat mode
+alleycat --chat "Hello, how are you today?"
+# or start with no initial prompt
+alleycat --chat
+# or talk to dr johnson
+alleycat --chat -i prompts/johnson.txt
 ```
 
 Available options:
@@ -190,6 +197,7 @@ Available options:
 - `--instructions`, `-i`: System instructions (string or file path)
 - `--verbose`, `-v`: Enable verbose debug output
 - `--stream`, `-s`: Stream the response as it's generated
+- `--chat`, `-c`: Enter interactive chat mode with continuous conversation
 
 Environment variables:
 
@@ -284,7 +292,6 @@ The name "Alleycat" draws inspiration from Unix tradition and the tool's nature:
 
 ## Future Features - Coming Soon (perhaps)
 
-- Interactive mode for continuous conversations
 - Support for multiple LLM providers beyond OpenAI
 - Chat history management with local storage
 - Custom prompt templates
