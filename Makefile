@@ -1,4 +1,4 @@
-.PHONY: venv install install-dev clean build run test lint prompt-test help build-dist publish-test publish
+.PHONY: venv install install-dev clean build run test lint prompt-test help build-dist publish-test publish bump-version
 
 # Use bash for shell commands
 SHELL := /bin/bash
@@ -46,6 +46,13 @@ build: clean install ## Clean and rebuild the package
 
 # Find all source files
 PACKAGE_FILES := $(shell find src -type f -name "*.py") pyproject.toml README.md
+
+bump-version: ## Bump version number (usage: make bump-version [BUMP=patch|minor|major])
+	@echo "Bumping version..."
+	@BUMP_TYPE=$${BUMP:-patch}; \
+	echo "Bump type: $$BUMP_TYPE"; \
+	. $(VENV_BIN)/activate && uv run python scripts/bump_version.py $$BUMP_TYPE
+	@echo "Version bumped. Don't forget to commit the changes!"
 
 dist: $(PACKAGE_FILES) install-dev ## Build distribution packages if source files have changed
 	@echo "Building distribution packages..."

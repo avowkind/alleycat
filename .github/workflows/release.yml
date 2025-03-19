@@ -12,7 +12,7 @@ jobs:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Needed for version bump and tag
+      contents: write  # Needed for tag creation
       pull-requests: write  # Needed to comment on PR
 
     steps:
@@ -35,22 +35,13 @@ jobs:
           uv sync --all-extras --dev
           uv pip install tomli
 
-      - name: Determine version bump type
-        id: bump-type
+      # Read the current version from pyproject.toml
+      - name: Get version
+        id: get-version
         run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          if [[ "$PR_TITLE" == *"[major]"* ]]; then
-            echo "type=major" >> $GITHUB_OUTPUT
-          elif [[ "$PR_TITLE" == *"[minor]"* ]]; then
-            echo "type=minor" >> $GITHUB_OUTPUT
-          else
-            echo "type=patch" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Bump version
-        id: bump-version
-        run: |
-          uv run python scripts/bump_version.py ${{ steps.bump-type.outputs.type }}
+          VERSION=$(uv run python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $VERSION"
 
       # Clean any build artifacts that might be present
       - name: Clean build artifacts
@@ -59,14 +50,12 @@ jobs:
           rm -rf src/*.egg-info/
           rm -f uv.lock
           
-      - name: Commit version bump
+      - name: Create version tag
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add pyproject.toml
-          git commit -m "Bump version to ${{ steps.bump-version.outputs.new_version }}"
-          git tag -a "v${{ steps.bump-version.outputs.new_version }}" -m "Release v${{ steps.bump-version.outputs.new_version }}"
-          git push && git push --tags
+          git tag -a "v${{ steps.get-version.outputs.version }}" -m "Release v${{ steps.get-version.outputs.version }}"
+          git push --tags
 
       - name: Build package
         run: uv run python -m build
@@ -80,6 +69,6 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.bump-version.outputs.new_version }}
-          name: Release v${{ steps.bump-version.outputs.new_version }}
+          tag_name: v${{ steps.get-version.outputs.version }}
+          name: Release v${{ steps.get-version.outputs.version }}
           generate_release_notes: true 

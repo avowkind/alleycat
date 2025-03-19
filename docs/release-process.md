@@ -1,6 +1,11 @@
 # AlleyCat Release Process
 
-AlleyCat uses GitHub Actions for automated versioning and releases to PyPI. This document explains the release process in detail.
+AlleyCat uses a two-step process for versioning and releases to PyPI:
+
+1. Manual version bumping (using the Makefile)
+2. Automated release process (using GitHub Actions)
+
+This document explains the complete release process.
 
 ## Semantic Versioning
 
@@ -10,39 +15,48 @@ AlleyCat follows [Semantic Versioning](https://semver.org/) (SemVer) principles:
 - **MINOR** version when you add functionality in a backward compatible manner
 - **PATCH** version when you make backward compatible bug fixes
 
-## Automated Release Process
+## Release Process Overview
 
-When a pull request is merged to the `main` branch, a GitHub Actions workflow (`release.yml`) is triggered that:
+The AlleyCat release process involves:
 
-1. Determines the version bump type from PR title tags
-2. Bumps the version number in `pyproject.toml`
-3. Commits the change and creates a tag
-4. Builds the Python package
-5. Publishes the package to PyPI
-6. Creates a GitHub release
+1. **Manual Version Bump**:
+   - Developers manually bump the version using the Makefile before creating a PR
+   - This avoids main branch protection rule conflicts
+
+2. **Automated Release (GitHub Actions)**:
+   - When a PR is merged to the `main` branch, a GitHub Actions workflow is triggered
+   - The workflow detects the version from pyproject.toml, creates a tag, and publishes to PyPI
 
 ## How to Create a Release
 
-To trigger a release, follow these steps:
+To create a release, follow these steps:
 
 1. Create a branch for your changes
-2. Make your changes, commit, and push to your branch
-3. Open a pull request to the `main` branch
-4. Include one of these tags in the PR title to control version bump type:
-   - `[major]` for breaking changes (e.g., "Add new API format [major]")
-   - `[minor]` for new features (e.g., "Add config file support [minor]")
-   - `[patch]` for bug fixes (default, tag optional) (e.g., "Fix typo in help text")
-5. When your PR is approved and merged, the automated release process will:
-   - Bump the version (determined by your PR title tag)
+2. Make your changes and test them
+3. Bump the version using the Makefile:
+   ```bash
+   # For patch version (default):
+   make bump-version
+
+   # For minor version:
+   make bump-version BUMP=minor
+
+   # For major version:
+   make bump-version BUMP=major
+   ```
+4. Commit the version change along with your other changes
+5. Push to your branch and open a pull request to the `main` branch
+6. When your PR is approved and merged, the automated release process will:
+   - Read the version from pyproject.toml
    - Create a Git tag for the version
-   - Deploy to PyPI
-   - Create a GitHub release
+   - Build and deploy to PyPI
+   - Create a GitHub release with release notes
 
 ## Manual Releases
 
-In case you need to manually create a release:
+In case you need to manually create a release without using the GitHub Actions workflow:
 
-1. Update the version in `pyproject.toml`
+1. Ensure the version in `pyproject.toml` is correct (use `make bump-version` as needed)
 2. Create a Git tag:
    ```bash
    git tag -a v0.1.x -m "Release v0.1.x"
