@@ -1,6 +1,6 @@
 Metadata-Version: 2.2
 Name: alleycat
-Version: 0.1.2
+Version: 0.1.4
 Summary: A command line tool for chat conversations with LLMs
 Author-email: Andrew <andrew@groat.nz>
 License: MIT
@@ -250,21 +250,24 @@ A CI workflow runs on all pull requests and pushes to the main branch:
 - Type checks with mypy
 - Verifies the package builds correctly
 
-### Automated Releases
+### Release Process
 
-AlleyCat uses semantic versioning with automated version bumping and deployment:
+AlleyCat uses semantic versioning with a 2-step manual-bump and automated-release process:
 
-1. When a pull request is merged to main, a GitHub Action:
-   - Determines the version bump type based on PR title tags:
-     - `[major]` for breaking changes (1.0.0 → 2.0.0)
-     - `[minor]` for new features (1.0.0 → 1.1.0)
-     - `[patch]` for bug fixes (default) (1.0.0 → 1.0.1)
-   - Bumps the version in pyproject.toml
-   - Commits and tags the new version
-   - Builds and publishes the package to PyPI
-   - Creates a GitHub release
+1. **Manual Version Bump** (before creating PR):
+   - Run `make bump-version` to increment patch version (default)
+   - Or specify version type: `make bump-version BUMP=minor`
+   - Commit the version change with your other changes
+   - Create a PR to main
 
-To use this feature, include `[major]`, `[minor]`, or `[patch]` in your PR title.
+2. **Automated Release** (after PR is merged):
+   - When the PR is merged, a GitHub Action:
+     - Reads the current version from pyproject.toml
+     - Creates a Git tag for the version
+     - Builds and publishes the package to PyPI
+     - Creates a GitHub release with release notes
+
+This approach ensures compliance with branch protection rules while maintaining a streamlined release process.
 
 ## License
 

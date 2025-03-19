@@ -84,8 +84,9 @@ def main() -> int:
     with open(pyproject_path) as f:
         content = f.read()
 
-    pattern = re.compile(r'version\s*=\s*"([^"]*)"')
-    new_content = pattern.sub(f'version = "{new_version}"', content)
+    # Make pattern more specific to only match project version
+    pattern = re.compile(r'(\[project\][^\[]*?version\s*=\s*)"([^"]*)"', re.DOTALL)
+    new_content = pattern.sub(f'\\1"{new_version}"', content)
 
     # Check if replacement worked
     if content == new_content:

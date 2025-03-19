@@ -52,6 +52,7 @@ bump-version: ## Bump version number (usage: make bump-version [BUMP=patch|minor
 	@BUMP_TYPE=$${BUMP:-patch}; \
 	echo "Bump type: $$BUMP_TYPE"; \
 	. $(VENV_BIN)/activate && uv run python scripts/bump_version.py $$BUMP_TYPE
+	@uv sync --all-extras --dev
 	@echo "Version bumped. Don't forget to commit the changes!"
 
 dist: $(PACKAGE_FILES) install-dev ## Build distribution packages if source files have changed
