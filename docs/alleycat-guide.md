@@ -9,6 +9,7 @@ Alleycat follows Unix philosophy: it does one thing well - transforming text thr
 ## Key Features
 
 - **Single-shot Mode**: Perfect for quick queries and Unix pipe-friendly operations
+- **Interactive Chat Mode**: Engage in continuous back-and-forth conversations
 - **Flexible Input/Output**: Supports multiple input methods and formatting options (text, markdown, JSON)
 - **Configurable**: Easy setup via environment variables, .env files, or command-line parameters
 - **Modern Architecture**: Built on top of the latest OpenAI API with room for more providers
@@ -49,6 +50,120 @@ Key options include:
 - `--temperature, -t`: Adjust response creativity (0.0-2.0)
 - `--format, -f`: Set output format (text, markdown, json)
 - `--stream, -s`: Stream responses as they're generated
+- `--chat, -c`: Enter interactive chat mode with continuous conversation
+
+### Command Generation and Execution
+
+Alleycat is especially useful for generating and executing shell commands. You can ask it to create a command in natural language and then pipe the result directly to your shell:
+
+```bash
+# Ask for a command to list files sorted by modification time
+alleycat "Give me the bash command to list all files in the current directory sorted by modification time, newest first. Just return the raw command without explanation or backticks." | bash
+
+# The command generated and executed might be:
+# ls -lt
+```
+
+For more consistent results when generating commands, use the included `bash.txt` prompt file:
+
+```bash
+# Use the bash prompt to get clean, executable commands
+alleycat -i prompts/bash.txt "list files sorted by modification time" | bash
+
+# Commands will be returned without explanations, ready for piping
+alleycat -i prompts/bash.txt "find files larger than 10MB" | bash
+```
+
+The bash prompt is designed to:
+
+- Return only the raw command with no explanations or formatting
+- Generate safe and non-destructive commands where possible
+- Add appropriate safeguards for potentially dangerous operations
+- Produce output that can be directly piped to bash
+
+This approach is particularly helpful for complex commands that you might not remember:
+
+```bash
+# Find large files
+alleycat "Command to find the 10 largest files in this directory and subdirectories" | bash
+# Might execute: find . -type f -exec du -h {} \; | sort -rh | head -n 10
+
+# Complex grep pattern
+alleycat "Command to find all Python files containing either 'import pandas' or 'import numpy'" | bash
+# Might execute: grep -E "import (pandas|numpy)" --include="*.py" -r .
+```
+
+For safety, you can review the command before execution:
+
+```bash
+# Review the command first
+command=$(alleycat "Command to back up all .py files to a timestamped directory")
+echo "About to execute: $command"
+read -p "Execute? (y/n) " confirm
+[[ $confirm == [yY] ]] && eval "$command"
+```
+
+This makes Alleycat an excellent tool for command discovery and automation, combining AI assistance with the power of the shell.
+
+### Interactive Chat Mode
+
+Alleycat supports an interactive chat mode that allows continuous back-and-forth conversations with the AI model. The chat maintains context between messages, enabling you to have coherent multi-turn dialogues.
+
+```bash
+# Start a chat with an initial message
+alleycat --chat "Hello, tell me about yourself"
+
+# Start a chat without an initial message
+alleycat --chat
+
+# talk with Dr Johnson or Diderot
+alleycat -c i- prompts/johnson.txt
+```
+
+In interactive chat mode:
+
+1. The AI responds to your message
+2. You're prompted to enter your next message with a simple ">" prompt
+3. The conversation continues until you:
+   - Press Enter with an empty message
+   - Press Ctrl+C to interrupt the session
+
+Example chat session:
+
+```
+$ alleycat --chat "What are the three laws of robotics?"
+
+Alleycat Interactive Chat
+
+The three laws of robotics, formulated by science fiction author Isaac Asimov, are:
+
+1. First Law: A robot may not injure a human being or, through inaction, allow a human being to come to harm.
+
+2. Second Law: A robot must obey the orders given it by human beings except where such orders would conflict with the First Law.
+
+3. Third Law: A robot must protect its own existence as long as such protection does not conflict with the First or Second Law.
+
+These laws first appeared in Asimov's 1942 short story "Runaround" and became a foundation for many of his science fiction works involving robots.
+
+>Who created these laws?
+Isaac Asimov created the Three Laws of Robotics. He was an American writer and professor of biochemistry, known for his works of science fiction and popular science. Asimov introduced these laws in his 1942 short story "Runaround," which was part of his Robot series. The laws became a central theme in many of his subsequent stories and novels about robots and have since become influential in discussions about AI ethics and robot behavior, even beyond the realm of fiction.
+
+>
+
+Interactive chat mode maintains conversation context between messages, allowing the AI to reference earlier parts of the conversation. This makes it ideal for:
+
+- Iterative problem solving
+- Extended discussions on complex topics
+- Educational dialogues where follow-up questions build on previous answers
+- Creative writing assistance with ongoing feedback
+
+The conversation context is maintained through OpenAI's conversation API, which preserves the context between messages using response IDs. This allows the AI to understand references to previous messages and maintain a coherent conversation without having to repeat information.
+
+You can combine chat mode with other options, such as model selection, temperature, and output format:
+
+```bash
+alleycat --chat --model gpt-4o --temperature 0.8 --format markdown
+```
 
 ## System-Wide Integration
 
@@ -102,8 +217,9 @@ Alleycat can be configured to respond in different styles or personas using syst
 Here's how the same query about Python yields dramatically different responses using two historical personas:
 
 1. Using Dr. Johnson's style (from `prompts/johnson.txt`):
+
 ```bash
-$ alleycat -i prompts/johnson.txt "What is Python?"
+alleycat -i prompts/johnson.txt "What is Python?"
 ```
 
 ```
@@ -122,9 +238,11 @@ See also: COMPUTATION, ENGINE, PROGRAM (terms which, in our declining age, have 
 ```
 
 2. Using Diderot's style (from `prompts/diderot.txt`):
+
 ```bash
-$ alleycat -i prompts/diderot.txt "What is Python?"
+alleycat -i prompts/diderot.txt "What is Python?"
 ```
+
 ```
 **Python (Substantif, masculin)**
 
@@ -163,9 +281,11 @@ transformation sociale, fidèle aux idéaux de notre temps.
 ```
 
 3. Translating Diderot's French response to English using pipes:
+
 ```bash
-$ alleycat -i prompts/diderot.txt "What is Python?" | alleycat -i "You are a precise translator. Translate the French text to English while preserving the original formatting and structure. Maintain all section headers in their original format."
+alleycat -i prompts/diderot.txt "What is Python?" | alleycat -i "You are a precise translator. Translate the French text to English while preserving the original formatting and structure. Maintain all section headers in their original format."
 ```
+
 ```
 PYTHON, (Mechanical Arts & Modern Philosophy) n.m. Programming language that takes its name from the Python serpent, a mythological creature from Greek antiquity. Invented by the philosopher-mechanic Guido van Rossum, this language represents the remarkable union between philosophical simplicity and practical utility in the modern art of programming.
 
@@ -202,7 +322,6 @@ ALLEYCAT_TEMPERATURE=0.7
 
 The roadmap for Alleycat includes exciting additions:
 
-- Interactive mode for continuous conversations
 - Support for multiple LLM providers
 - Chat history management
 - Custom prompt templates
