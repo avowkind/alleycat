@@ -25,6 +25,54 @@ PYPI_TOKEN=pypi-xxxxxxxxxxxx
 PYPI_USERNAME=yourusername
 ```
 
+## GitHub Actions CI/CD Workflows
+
+### Workflow Overview
+
+AlleyCat uses GitHub Actions for continuous integration and deployment:
+
+1. **CI Workflow** - Runs tests, linting, and checks package builds
+2. **Release Workflow** - Handles version bumping and PyPI releases
+3. **Classifier Update** - Keeps Python version classifiers up to date
+
+### Common Issues and Troubleshooting
+
+#### Missing Commands
+
+When your CI pipeline reports errors like:
+
+```
+error: Failed to spawn: `twine`
+  Caused by: No such file or directory (os error 2)
+```
+
+This usually indicates that a required command-line tool is not available. Here's how to fix it:
+
+1. **Always use `uv sync` before using dev tools**:
+   ```yaml
+   steps:
+     - name: Install dependencies
+       run: uv sync --all-extras --dev
+   ```
+
+2. **Always prefix commands with `uv run`**:
+   ```yaml
+   # Correct:
+   run: uv run twine check dist/*
+   
+   # Incorrect (may fail):
+   run: twine check dist/*
+   ```
+
+3. **For tools not in your dependencies**, install them explicitly:
+   ```yaml
+   run: |
+     uv pip install toml-cli
+     uv run toml get pyproject.toml
+   ```
+
+Remember that each step in GitHub Actions runs in its own shell session, so dependencies installed in one step are available to subsequent steps.
+
 ## .env File Handling
 
 The application's Settings class is configured to:
