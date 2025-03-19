@@ -9,7 +9,7 @@ Author: Andrew Watkins <andrew@groat.nz>
 """
 
 from collections.abc import AsyncIterator
-from typing import Any, cast
+from typing import Any
 
 from openai import AsyncOpenAI
 from openai.types.responses import Response as OpenAIResponse
@@ -44,6 +44,7 @@ class OpenAIProvider(LLMProvider):
         """Initialize the OpenAI provider."""
         self.config = config
         self.client = AsyncOpenAI(api_key=config.api_key)
+        self.previous_response_id: str | None = None
         logging.info(
             f"Initialized OpenAI provider with model=[cyan]{config.model}[/cyan] "
             f"temperature=[cyan]{self.config.temperature}[/cyan]"
@@ -58,6 +59,10 @@ class OpenAIProvider(LLMProvider):
                 prompt_tokens=getattr(response.usage, "prompt_tokens", 0),
                 completion_tokens=getattr(response.usage, "completion_tokens", 0),
             )
+
+        # Store the response ID for continuity in conversations
+        if hasattr(response, "id"):
+            self.previous_response_id = response.id
 
         return LLMResponse(
             output_text=response.output_text,
@@ -106,6 +111,11 @@ class OpenAIProvider(LLMProvider):
                     if format_value in ["text", "markdown", "json"]:
                         params["text"] = {"format": format_value}
 
+            # Add conversation continuity if we have a previous response ID
+            # Only apply if not explicitly overridden by kwargs
+            if self.previous_response_id and "previous_response_id" not in kwargs:
+                params["previous_response_id"] = self.previous_response_id
+
             # Add any other parameters
             params.update(kwargs)
 
@@ -116,7 +126,8 @@ class OpenAIProvider(LLMProvider):
             # Call the OpenAI API
             if stream:
                 stream_response = await self.client.responses.create(**params)
-                return cast(AsyncIterator[ResponseStreamEvent], stream_response)
+                # For streaming, wrap the stream in our own to capture the response ID
+                return self._wrap_stream_with_id_capture(stream_response)
             else:
                 response = await self.client.responses.create(**params)
                 return self._convert_response(response)
@@ -124,6 +135,18 @@ class OpenAIProvider(LLMProvider):
         except Exception as e:
             logging.error(f"Error during OpenAI request: {str(e)}")
             raise
+
+    async def _wrap_stream_with_id_capture(
+        self, stream: AsyncIterator[ResponseStreamEvent]
+    ) -> AsyncIterator[ResponseStreamEvent]:
+        """Wrap a stream to capture the response ID from completed events."""
+        async for event in stream:
+            # Capture response ID from completed events
+            if event.type == "response.completed" and hasattr(event, "response"):
+                self.previous_response_id = event.response.id
+
+            # Always yield the event to the caller
+            yield event
 
     async def complete(self, messages: list[Message], **kwargs: Any) -> LLMResponse:
         """Send a completion request using responses API."""

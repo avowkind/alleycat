@@ -17,15 +17,15 @@ from pathlib import Path
 from typing import Any, TypeGuard
 
 import typer
-from openai.types.responses.response_stream_event import ResponseStreamEvent
-from rich.console import Console
-from rich.live import Live
-from rich.markdown import Markdown
-
 from alleycat_core import logging
 from alleycat_core.config.settings import Settings
 from alleycat_core.llm import OpenAIFactory
 from alleycat_core.llm.types import ResponseFormat
+from openai.types.responses.response_stream_event import ResponseStreamEvent
+from rich.console import Console
+from rich.live import Live
+from rich.markdown import Markdown
+from rich.prompt import Prompt
 
 console = Console()
 error_console = Console(stderr=True)
@@ -64,6 +64,7 @@ format_option = typer.Option(
 api_key_option = typer.Option(None, "--api-key", help="OpenAI API key", envvar="ALLEYCAT_OPENAI_API_KEY")
 verbose_option = typer.Option(False, "--verbose", "-v", help="Enable verbose debug output")
 stream_option = typer.Option(False, "--stream", "-s", help="Stream the response as it's generated")
+chat_option = typer.Option(False, "--chat", "-c", help="Interactive chat mode with continuous conversation")
 instructions_option = typer.Option(
     None,
     "--instructions",
@@ -219,6 +220,108 @@ async def run_chat(
         raise
 
 
+async def run_interactive_chat(
+    initial_prompt: str,
+    settings: Settings,
+    stream: bool = False,
+    instructions: str | None = None,
+) -> None:
+    """Run interactive chat mode with continuous conversation."""
+    # Create LLM provider
+    factory = OpenAIFactory()
+    llm = factory.create(
+        api_key=settings.openai_api_key,
+        model=settings.model,
+        temperature=settings.temperature,
+    )
+
+    # Display opening banner
+    console.print("[bold]Alleycat Interactive Chat[/bold]")
+
+    # Prepare response format based on settings
+    response_format: ResponseFormat = None
+    if settings.output_format == "json":
+        response_format = {"format": "json"}
+
+    # Initial prompt from the user
+    current_prompt = initial_prompt
+
+    try:
+        while True:
+            # Get response from LLM - no need to manage previous_response_id
+            # as it's now handled in the provider
+            response = await llm.respond(
+                input=current_prompt,
+                text=response_format,
+                instructions=instructions,
+                stream=stream,
+            )
+
+            # Handle the response
+            if stream:
+                if isinstance(response, AsyncIterator):
+                    # For streaming, we need to accumulate the response as we display it
+                    accumulated_text = ""
+                    async for event in response:
+                        if is_text_delta_event(event):
+                            accumulated_text += event.delta
+                            # Update the display - we'll use the same approach as handle_stream
+                            if settings.output_format == "markdown":
+                                console.print(Markdown(event.delta), end="")
+                            else:
+                                console.print(event.delta, end="")
+                        elif event.type == "response.completed" and hasattr(event, "response"):
+                            # Response ID is now tracked by the provider
+                            console.print("\n")  # Add a newline at the end
+                        elif is_error_event(event):
+                            logging.error(f"Error in stream: {event.error.message}")
+                            raise Exception(event.error.message)
+                else:
+                    raise TypeError("Expected streaming response but got non-streaming response")
+            else:
+                # Non-streaming response
+                if not isinstance(response, AsyncIterator):
+                    # Display the response - response ID is now tracked by the provider
+                    if settings.output_format == "markdown":
+                        console.print(Markdown(response.output_text))
+                    elif settings.output_format == "json":
+                        console.print_json(response.output_text)
+                    else:
+                        console.print(response.output_text)
+
+                    # Display token usage if verbose
+                    if logging.is_verbose() and response.usage:
+                        total = response.usage.total_tokens
+                        prompt_tokens = response.usage.prompt_tokens
+                        completion_tokens = response.usage.completion_tokens
+                        logging.info(
+                            f"Tokens used: [cyan]{total}[/cyan] "
+                            f"(prompt: {prompt_tokens}, completion: {completion_tokens})"
+                        )
+                else:
+                    raise TypeError("Expected non-streaming response but got streaming response")
+
+            # Get the next prompt from the user
+            console.print("")
+            try:
+                current_prompt = Prompt.ask("[bold cyan]>[/bold cyan]")
+                if not current_prompt.strip():
+                    # If user entered empty input, exit
+                    break
+            except KeyboardInterrupt:
+                console.print("\nExiting chat...")
+                break
+
+    except Exception as e:
+        logging.error(str(e))
+        if logging.is_verbose():
+            logging.error("Traceback:", style="bold")
+            import traceback
+
+            logging.error(traceback.format_exc())
+        raise
+
+
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def chat(
     ctx: typer.Context,
@@ -228,6 +331,7 @@ def chat(
     api_key: str | None = api_key_option,
     verbose: bool = verbose_option,
     stream: bool = stream_option,
+    chat_mode: bool = chat_option,
     instructions: str = instructions_option,
 ) -> None:
     """Send a prompt to the LLM and get a response.
@@ -239,6 +343,11 @@ def chat(
     System instructions can be provided either directly or from a file:
     1. Direct: alleycat -i "You are a helpful assistant" "tell me a joke"
     2. From file: alleycat -i prompts/assistant.txt "tell me a joke"
+
+    For interactive chat mode with continuous conversation:
+    alleycat --chat "Hello, how are you today?"
+    Or start a chat without an initial prompt:
+    alleycat --chat
     """
     try:
         # Set verbosity level
@@ -247,13 +356,21 @@ def chat(
         # Get prompt from command line args or stdin
         prompt = " ".join(ctx.args) if ctx.args else get_prompt_from_stdin()
 
+        # Check if prompt is required
         if not prompt:
-            logging.error(
-                "No prompt provided. Either pass it as arguments or via stdin:\n"
-                "  alleycat tell me a joke\n"
-                "  echo 'tell me a joke' | alleycat"
-            )
-            sys.exit(1)
+            if chat_mode:
+                # In chat mode, use a default greeting if no prompt is provided
+                prompt = "Hello! I'm ready to chat."
+                logging.info("Starting chat with default greeting.")
+            else:
+                # In normal mode, require a prompt
+                logging.error(
+                    "No prompt provided. Either pass it as arguments or via stdin:\n"
+                    "  alleycat tell me a joke\n"
+                    "  echo 'tell me a joke' | alleycat\n"
+                    "Or use --chat to start an interactive session without an initial prompt."
+                )
+                sys.exit(1)
 
         # Load base settings from environment
         settings = Settings()
@@ -286,8 +403,16 @@ def chat(
             )
             sys.exit(1)
 
-        # Run the chat interaction in a new event loop
-        asyncio.run(run_chat(prompt, settings, stream, instruction_text))
+        # Run in interactive chat mode if --chat is specified
+        if chat_mode:
+            try:
+                asyncio.run(run_interactive_chat(prompt, settings, stream, instruction_text))
+            except KeyboardInterrupt:
+                logging.info("Chat session ended by user.")
+                sys.exit(0)
+        else:
+            # Run the normal chat interaction
+            asyncio.run(run_chat(prompt, settings, stream, instruction_text))
 
     except Exception as e:
         logging.error(str(e))
