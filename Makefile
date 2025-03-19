@@ -49,7 +49,7 @@ PACKAGE_FILES := $(shell find src -type f -name "*.py") pyproject.toml README.md
 
 dist: $(PACKAGE_FILES) install-dev ## Build distribution packages if source files have changed
 	@echo "Building distribution packages..."
-	@. $(VENV_BIN)/activate && uv run python -m build
+	@. $(VENV_BIN)/activate && uv build
 	@touch dist
 
 build-dist: dist ## Build distribution packages (only if needed)

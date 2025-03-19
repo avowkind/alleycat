@@ -206,7 +206,7 @@ AlleyCat uses GitHub Actions for automated testing and deployment:
 
 A CI workflow runs on all pull requests and pushes to the main branch:
 
-- Runs tests on Python 3.10 through 3.12
+- Runs tests on Python 3.12
 - Lints code with Ruff
 - Type checks with mypy
 - Verifies the package builds correctly

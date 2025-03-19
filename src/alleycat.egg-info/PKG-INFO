@@ -13,12 +13,10 @@ Classifier: Intended Audience :: Developers
 Classifier: Intended Audience :: End Users/Desktop
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Programming Language :: Python :: 3
-Classifier: Programming Language :: Python :: 3.10
-Classifier: Programming Language :: Python :: 3.11
 Classifier: Programming Language :: Python :: 3.12
 Classifier: Topic :: Text Processing
 Classifier: Topic :: Utilities
-Requires-Python: >=3.10
+Requires-Python: >=3.12
 Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: openai>=1.12.0
@@ -247,7 +245,7 @@ AlleyCat uses GitHub Actions for automated testing and deployment:
 
 A CI workflow runs on all pull requests and pushes to the main branch:
 
-- Runs tests on Python 3.10 through 3.12
+- Runs tests on Python 3.12
 - Lints code with Ruff
 - Type checks with mypy
 - Verifies the package builds correctly
