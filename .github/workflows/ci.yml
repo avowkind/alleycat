@@ -34,9 +34,11 @@ jobs:
     - name: Type check with mypy
       run: uv run mypy src
         
-    - name: Test with pytest
-      run: uv run pytest
-        
+    - name: Run tests
+      run: uv run pytest tests -v
+      env:
+        ALLEYCAT_OPENAI_API_KEY: ${{ secrets.ALLEYCAT_OPENAI_API_KEY }}
+       
   build:
     runs-on: ubuntu-latest
     steps:
