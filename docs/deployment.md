@@ -150,43 +150,45 @@ def clean_env(monkeypatch):
 
 This ensures your tests remain isolated from the environment and are reproducible.
 
-#### Version Bumping in GitHub Actions
+#### Version Bumping
 
-AlleyCat uses a dedicated Python script located in `scripts/bump_version.py` for reliable version management in GitHub Actions. This approach provides:
+AlleyCat now uses a manual version bumping approach with a Makefile command. This is done **before** creating a PR to main, which avoids repository rule violations that would occur if GitHub Actions tried to directly commit to the protected main branch.
+
+A dedicated Python script located in `scripts/bump_version.py` provides reliable version management. This approach provides:
 
 1. Better maintainability by separating logic from workflow configuration
 2. Improved readability and testability
 3. More robust semantic version handling
+4. Compliance with repository branch protection rules
 
 The script handles:
 - Reading the current version from pyproject.toml
 - Parsing semantic version components
 - Incrementing based on the bump type (major, minor, patch)
 - Updating the pyproject.toml file
-- Setting GitHub Actions outputs
 
-Usage in GitHub Actions:
-```yaml
-- name: Bump version
-  id: bump-version
-  run: |
-    python scripts/bump_version.py ${{ steps.bump-type.outputs.type }}
-```
-
-For local testing or manual version bumping, you can run:
+To bump the version:
 ```bash
-# Dry run to see what would happen
+# Bump patch version (default)
+make bump-version
+
+# Specify version bump type
+make bump-version BUMP=minor
+make bump-version BUMP=major
+
+# For a dry run (doesn't modify files)
 python scripts/bump_version.py --dry-run
-
-# Actually bump the patch version
-python scripts/bump_version.py patch
-
-# Bump to a minor version
-python scripts/bump_version.py minor
 ```
 
-This approach avoids common issues with shell-based version manipulation:
-- More robust parsing of semantic versions
-- Better handling of file content
-- Reliable regex-based replacement
-- Proper error handling 
+**Workflow:**
+1. Make your changes in a feature branch
+2. Run `make bump-version` with appropriate type
+3. Commit the version change along with your other changes
+4. Create a PR to main
+5. When the PR is merged, the release workflow will:
+   - Read the current version from pyproject.toml
+   - Create a tag based on this version
+   - Build and publish the package to PyPI
+   - Create a GitHub release
+
+This approach avoids repository rule violations while maintaining a proper semantic versioning workflow. 
