@@ -50,7 +50,7 @@ jobs:
       - name: Bump version
         id: bump-version
         run: |
-          python scripts/bump_version.py ${{ steps.bump-type.outputs.type }}
+          uv run python scripts/bump_version.py ${{ steps.bump-type.outputs.type }}
 
       # Clean any build artifacts that might be present
       - name: Clean build artifacts
