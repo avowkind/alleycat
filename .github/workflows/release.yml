@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --all-extras --dev
-          uv pip install toml-cli
+          uv pip install tomli
 
       - name: Determine version bump type
         id: bump-type
@@ -47,38 +47,10 @@ jobs:
             echo "type=patch" >> $GITHUB_OUTPUT
           fi
 
-      - name: Read current version
-        id: current-version
-        run: |
-          VERSION=$(toml get pyproject.toml project.version | tr -d '"')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
       - name: Bump version
         id: bump-version
         run: |
-          CURRENT_VERSION="${{ steps.current-version.outputs.version }}"
-          BUMP_TYPE="${{ steps.bump-type.outputs.type }}"
-          
-          # Split version into parts
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-          
-          # Increment version based on bump type
-          if [ "$BUMP_TYPE" == "major" ]; then
-            MAJOR=$((MAJOR + 1))
-            MINOR=0
-            PATCH=0
-          elif [ "$BUMP_TYPE" == "minor" ]; then
-            MINOR=$((MINOR + 1))
-            PATCH=0
-          else
-            PATCH=$((PATCH + 1))
-          fi
-          
-          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          
-          # Update version in pyproject.toml
-          sed -i "s/version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml
+          python scripts/bump_version.py ${{ steps.bump-type.outputs.type }}
 
       # Clean any build artifacts that might be present
       - name: Clean build artifacts
