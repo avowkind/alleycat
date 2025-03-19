@@ -80,6 +80,13 @@ jobs:
           # Update version in pyproject.toml
           sed -i "s/version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml
 
+      # Clean any build artifacts that might be present
+      - name: Clean build artifacts
+        run: |
+          rm -rf dist/
+          rm -rf src/*.egg-info/
+          rm -f uv.lock
+          
       - name: Commit version bump
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
