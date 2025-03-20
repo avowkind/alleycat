@@ -1,4 +1,4 @@
-Metadata-Version: 2.2
+Metadata-Version: 2.4
 Name: alleycat
 Version: 0.2.0
 Summary: A command line tool for chat conversations with LLMs
@@ -36,6 +36,7 @@ Requires-Dist: mypy>=1.8.0; extra == "dev"
 Requires-Dist: types-PyYAML>=6.0.12.12; extra == "dev"
 Requires-Dist: build>=1.2.2.post1; extra == "dev"
 Requires-Dist: twine>=6.1.0; extra == "dev"
+Dynamic: license-file
 
 # AlleyCat - A command line tool for AI text processing
 

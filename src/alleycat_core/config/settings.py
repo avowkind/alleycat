@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     temperature: float = Field(default=0.7, description="Sampling temperature", ge=0.0, le=2.0)
     max_tokens: int | None = Field(default=None, description="Maximum number of tokens to generate")
 
+    # File settings
+    file_path: str | None = Field(default=None, description="Path to a file to upload")
+    file_id: str | None = Field(default=None, description="ID of the uploaded file")
+
     # Chat settings
     history_file: Path = Field(
         default=Path.home() / ".alleycat" / "history.json", description="Path to chat history file"
