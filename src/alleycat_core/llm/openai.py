@@ -9,6 +9,7 @@ Author: Andrew Watkins <andrew@groat.nz>
 """
 
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Any
 
 from openai import AsyncOpenAI
@@ -35,6 +36,8 @@ class OpenAIConfig(BaseModel):
     instructions: str | None = None  # System message for responses API
     tools: list[ToolParam] | None = None  # Tools for function calling
     include: list[ResponseIncludable] | None = None  # Additional data to include in response
+    file_path: str | None = None  # Path to a file to upload
+    file_id: str | None = None  # ID of the uploaded file
 
 
 class OpenAIProvider(LLMProvider):
@@ -45,6 +48,7 @@ class OpenAIProvider(LLMProvider):
         self.config = config
         self.client = AsyncOpenAI(api_key=config.api_key)
         self.previous_response_id: str | None = None
+        self.file_id: str | None = config.file_id
         logging.info(
             f"Initialized OpenAI provider with model=[cyan]{config.model}[/cyan] "
             f"temperature=[cyan]{self.config.temperature}[/cyan]"
@@ -68,6 +72,76 @@ class OpenAIProvider(LLMProvider):
             output_text=response.output_text,
             usage=usage,
         )
+
+    async def upload_file(self, file_path: str) -> str:
+        """Upload a file to OpenAI.
+
+        Args:
+            file_path: Path to the file to upload
+
+        Returns:
+            The file ID
+
+        """
+        path = Path(file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        # Check file extension - OpenAI currently only supports certain file types
+        supported_extensions = [".pdf", ".json", ".jsonl", ".txt", ".csv", ".md"]
+        if path.suffix.lower() not in supported_extensions:
+            raise ValueError(
+                f"Unsupported file format: {path.suffix}. "
+                f"Currently supported formats: {', '.join(supported_extensions)}"
+            )
+
+        try:
+            with open(path, "rb") as file:
+                response = await self.client.files.create(
+                    file=file,
+                    purpose="assistants",
+                )
+
+            self.file_id = response.id
+            logging.info(f"Uploaded file [cyan]{path.name}[/cyan] with ID [cyan]{self.file_id}[/cyan]")
+            return self.file_id
+        except Exception as e:
+            error_msg = str(e)
+            # Check for common error cases and provide more helpful messages
+            if "context_length_exceeded" in error_msg or "maximum limit" in error_msg:
+                logging.error("File too large: The file exceeds the maximum token limit for the chosen model.")
+                logging.error("Try using a smaller file or splitting the content into multiple smaller files.")
+            elif "invalid_request_error" in error_msg and "file type" in error_msg:
+                logging.error(f"Invalid file format: {error_msg}")
+                logging.error(f"Supported formats: {', '.join(supported_extensions)}")
+            else:
+                logging.error(f"Error uploading file: {error_msg}")
+            raise
+
+    async def delete_file(self, file_id: str | None = None) -> bool:
+        """Delete a file from OpenAI.
+
+        Args:
+            file_id: ID of the file to delete. If None, uses the stored file_id.
+
+        Returns:
+            True if the file was deleted, False otherwise
+
+        """
+        target_id = file_id or self.file_id
+        if not target_id:
+            logging.warning("No file ID provided for deletion")
+            return False
+
+        try:
+            await self.client.files.delete(target_id)
+            logging.info(f"Deleted file with ID [cyan]{target_id}[/cyan]")
+            if target_id == self.file_id:
+                self.file_id = None
+            return True
+        except Exception as e:
+            logging.error(f"Error deleting file: {str(e)}")
+            return False
 
     async def respond(
         self,
@@ -102,6 +176,33 @@ class OpenAIProvider(LLMProvider):
 
             if tools is not None or self.config.tools is not None:
                 params["tools"] = tools or self.config.tools
+
+            # Add file references if we have a file ID
+            if self.file_id:
+                # Format the input as a structured object with the file reference
+                if isinstance(input, str):
+                    # Create a special message that includes the file reference
+                    # This preserves any instructions that might have been set above
+                    structured_input = {
+                        "role": "user",
+                        "content": [
+                            {"type": "input_file", "file_id": self.file_id},
+                            {"type": "input_text", "text": input},
+                        ],
+                    }
+                    # OpenAI expects an array of input items, not a single object
+                    params["input"] = [structured_input]
+                    logging.info(f"Including file ID [cyan]{self.file_id}[/cyan] in structured input")
+
+                    # Add additional note to instructions if they exist
+                    file_instruction = "The user has attached a file for you to analyze."
+                    if "instructions" in params:
+                        params["instructions"] = f"{params['instructions']}\n\n{file_instruction}"
+                    else:
+                        params["instructions"] = file_instruction
+                else:
+                    # Input is already structured, log a warning
+                    logging.warning("File ID available but input is already structured. File might not be included.")
 
             # Convert our ResponseFormat to OpenAI's expected format
             if text is not None or self.config.response_format is not None:
@@ -182,6 +283,10 @@ class OpenAIFactory:
             kwargs["response_format"] = {"format": "json"}
             # Remove output_format as it's not part of OpenAIConfig
             kwargs.pop("output_format", None)
+
+        # If file path is provided but file_id is not, upload the file
+        if kwargs.get("file_path") and not kwargs.get("file_id"):
+            logging.warning("File path provided without file_id, but upload should be handled by CLI")
 
         config = OpenAIConfig(**kwargs)
         return OpenAIProvider(config)

@@ -10,6 +10,7 @@ Author: Andrew Watkins <andrew@groat.nz>
 """
 
 import asyncio
+import atexit
 import enum
 import sys
 from collections.abc import AsyncIterator
@@ -26,6 +27,7 @@ from rich.prompt import Prompt
 from alleycat_core import logging
 from alleycat_core.config.settings import Settings
 from alleycat_core.llm import OpenAIFactory
+from alleycat_core.llm.openai import OpenAIConfig, OpenAIProvider
 from alleycat_core.llm.types import ResponseFormat
 
 console = Console()
@@ -37,9 +39,35 @@ app = typer.Typer(
     add_completion=True,
 )
 
+# Store the uploaded file id for cleanup on exit
+_uploaded_file_id: str | None = None
+_llm_provider: Any | None = None
 
-class OutputFormat(str, enum.Enum):
-    """Output format options."""
+
+def cleanup_file() -> None:
+    """Clean up uploaded file when the program exits."""
+    global _uploaded_file_id, _llm_provider
+
+    if _uploaded_file_id and _llm_provider:
+        logging.info(f"Cleaning up file with ID: {_uploaded_file_id}")
+        try:
+            # Use the OpenAI SDK directly rather than through the provider's async method
+            if hasattr(_llm_provider, "client") and hasattr(_llm_provider.client, "files"):
+                import openai
+
+                client = openai.OpenAI(api_key=_llm_provider.config.api_key)
+                client.files.delete(_uploaded_file_id)
+                logging.info(f"Deleted file with ID: {_uploaded_file_id}")
+        except Exception as e:
+            logging.error(f"Error cleaning up file: {e}")
+
+
+# Register the cleanup function to run at exit
+atexit.register(cleanup_file)
+
+
+class OutputMode(str, enum.Enum):
+    """Output mode options."""
 
     TEXT = "text"
     MARKDOWN = "markdown"
@@ -47,7 +75,7 @@ class OutputFormat(str, enum.Enum):
 
 
 # Define command options at module level
-model_option = typer.Option(None, "--model", "-m", help="Model to use", envvar="ALLEYCAT_MODEL")
+model_option = typer.Option(None, "--model", help="Model to use", envvar="ALLEYCAT_MODEL")
 temperature_option = typer.Option(
     None,
     "--temperature",
@@ -56,11 +84,11 @@ temperature_option = typer.Option(
     min=0.0,
     max=2.0,
 )
-format_option = typer.Option(
+mode_option = typer.Option(
     None,
-    "--format",
-    "-f",
-    help="Output format (text, markdown, json)",
+    "--mode",
+    "-m",
+    help="Output mode (text, markdown, json)",
 )
 api_key_option = typer.Option(None, "--api-key", help="OpenAI API key", envvar="ALLEYCAT_OPENAI_API_KEY")
 verbose_option = typer.Option(False, "--verbose", "-v", help="Enable verbose debug output")
@@ -71,6 +99,12 @@ instructions_option = typer.Option(
     "--instructions",
     "-i",
     help="System instructions (either a string or path to a file)",
+)
+file_option = typer.Option(
+    None,
+    "--file",
+    "-f",
+    help="Path to a file to upload and reference in the conversation",
 )
 
 
@@ -105,8 +139,16 @@ async def handle_stream(stream: AsyncIterator[ResponseStreamEvent], settings: Se
                     # Final text received, format and output
                     logging.output_console.print_json(accumulated_text)
                 elif is_error_event(event):
-                    logging.error(f"Error in stream: {event.error.message}")
-                    raise Exception(event.error.message)
+                    error_msg = event.error.message
+                    if "context_length_exceeded" in error_msg or "maximum limit" in error_msg:
+                        logging.error("Error: The conversation has grown too large for the model's context window.")
+                        logging.error("Try starting a new conversation or using a model with a larger context window.")
+                    elif "rate limit" in error_msg.lower():
+                        logging.error("Rate limit error: Too many requests in a short period.")
+                        logging.error("Please wait a moment before continuing.")
+                    else:
+                        logging.error(f"Error in stream: {error_msg}")
+                    raise Exception(error_msg)
                 # Ignore other event types for now
         except Exception as e:
             logging.error(f"Error during streaming: {str(e)}")
@@ -123,8 +165,18 @@ async def handle_stream(stream: AsyncIterator[ResponseStreamEvent], settings: Se
                         else:
                             live.update(accumulated_text)
                     elif is_error_event(event):
-                        logging.error(f"Error in stream: {event.error.message}")
-                        raise Exception(event.error.message)
+                        error_msg = event.error.message
+                        if "context_length_exceeded" in error_msg or "maximum limit" in error_msg:
+                            logging.error("Error: The conversation has grown too large for the model's context window.")
+                            logging.error(
+                                "Try starting a new conversation or using a model with a larger context window."
+                            )
+                        elif "rate limit" in error_msg.lower():
+                            logging.error("Rate limit error: Too many requests in a short period.")
+                            logging.error("Please wait a moment before continuing.")
+                        else:
+                            logging.error(f"Error in stream: {error_msg}")
+                        raise Exception(error_msg)
                     # Ignore other event types for now
         except Exception as e:
             logging.error(f"Error during streaming: {str(e)}")
@@ -150,13 +202,16 @@ async def run_chat(
     instructions: str | None = None,
 ) -> None:
     """Run the chat interaction with the LLM."""
+    global _llm_provider
     # Create LLM provider
     factory = OpenAIFactory()
     llm = factory.create(
         api_key=settings.openai_api_key,
         model=settings.model,
         temperature=settings.temperature,
+        file_id=settings.file_id,
     )
+    _llm_provider = llm
 
     # Prepare response format based on settings
     response_format: ResponseFormat = None
@@ -228,13 +283,16 @@ async def run_interactive_chat(
     instructions: str | None = None,
 ) -> None:
     """Run interactive chat mode with continuous conversation."""
+    global _llm_provider
     # Create LLM provider
     factory = OpenAIFactory()
     llm = factory.create(
         api_key=settings.openai_api_key,
         model=settings.model,
         temperature=settings.temperature,
+        file_id=settings.file_id,
     )
+    _llm_provider = llm
 
     # Display opening banner
     console.print("[bold]Alleycat Interactive Chat[/bold]")
@@ -275,8 +333,20 @@ async def run_interactive_chat(
                             # Response ID is now tracked by the provider
                             console.print("\n")  # Add a newline at the end
                         elif is_error_event(event):
-                            logging.error(f"Error in stream: {event.error.message}")
-                            raise Exception(event.error.message)
+                            error_msg = event.error.message
+                            if "context_length_exceeded" in error_msg or "maximum limit" in error_msg:
+                                logging.error(
+                                    "Error: The conversation has grown too large for the model's context window."
+                                )
+                                logging.error(
+                                    "Try starting a new conversation or using a model with a larger context window."
+                                )
+                            elif "rate limit" in error_msg.lower():
+                                logging.error("Rate limit error: Too many requests in a short period.")
+                                logging.error("Please wait a moment before continuing.")
+                            else:
+                                logging.error(f"Error in stream: {error_msg}")
+                            raise Exception(error_msg)
                 else:
                     raise TypeError("Expected streaming response but got non-streaming response")
             else:
@@ -328,12 +398,13 @@ def chat(
     ctx: typer.Context,
     model: str = model_option,
     temperature: float | None = temperature_option,
-    output_format: OutputFormat | None = format_option,
+    output_mode: OutputMode | None = mode_option,
     api_key: str | None = api_key_option,
     verbose: bool = verbose_option,
     stream: bool = stream_option,
     chat_mode: bool = chat_option,
     instructions: str = instructions_option,
+    file: str = file_option,
 ) -> None:
     """Send a prompt to the LLM and get a response.
 
@@ -349,6 +420,12 @@ def chat(
     alleycat --chat "Hello, how are you today?"
     Or start a chat without an initial prompt:
     alleycat --chat
+
+    To include a file for the model to analyze:
+    alleycat -f path/to/file.pdf "Analyze this file"
+
+    To change the output mode:
+    alleycat -m markdown "Tell me a joke"
     """
     try:
         # Set verbosity level
@@ -383,8 +460,10 @@ def chat(
             settings.model = model
         if temperature is not None:
             settings.temperature = temperature
-        if output_format is not None:
-            settings.output_format = output_format.value  # Use the value from the enum
+        if output_mode is not None:
+            settings.output_format = output_mode.value  # Use the value from the enum
+        if file is not None:
+            settings.file_path = file
 
         # Handle instructions
         instruction_text = None
@@ -403,6 +482,46 @@ def chat(
                 "or --api-key option."
             )
             sys.exit(1)
+
+        # Handle file upload if specified
+        if settings.file_path:
+            try:
+                # Create a temporary OpenAI provider to upload the file
+                config = OpenAIConfig(api_key=settings.openai_api_key)
+                file_provider = OpenAIProvider(config)
+
+                # Upload the file
+                global _uploaded_file_id
+                _uploaded_file_id = asyncio.run(file_provider.upload_file(settings.file_path))
+                settings.file_id = _uploaded_file_id
+
+                if logging.is_verbose():
+                    logging.info(f"Uploaded file: {settings.file_path}")
+                    logging.info(f"File ID: {settings.file_id}")
+            except ValueError as e:
+                # This is likely due to an unsupported file format
+                logging.error(str(e))
+                sys.exit(1)
+            except FileNotFoundError as e:
+                # File not found
+                logging.error(str(e))
+                logging.error("Please check the file path and try again.")
+                sys.exit(1)
+            except Exception as e:
+                # General error during file upload
+                error_msg = str(e)
+                if "context_length_exceeded" in error_msg or "maximum limit" in error_msg:
+                    logging.error("File size error: The file exceeds the token limit for the model.")
+                    logging.error("Solutions:")
+                    logging.error("1. Try a smaller file")
+                    logging.error("2. Split the content into multiple smaller files")
+                    logging.error("3. Try a different model with a larger token context")
+                elif "rate limit" in error_msg.lower():
+                    logging.error("Rate limit error: Too many requests in a short period.")
+                    logging.error("Please wait a moment and try again.")
+                else:
+                    logging.error(f"Error uploading file: {error_msg}")
+                sys.exit(1)
 
         # Run in interactive chat mode if --chat is specified
         if chat_mode:

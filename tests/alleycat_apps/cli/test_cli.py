@@ -71,7 +71,7 @@ async def test_command_json_response(cli_runner: CliRunner, evaluator: ResponseE
     result = cli_runner.invoke(
         app,
         [
-            "--format",
+            "--mode",
             "json",
             test_case.prompt,
         ],

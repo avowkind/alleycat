@@ -61,3 +61,5 @@ dmypy.json
 # Logs
 *.log
 logs/ 
+
+docs/steiner/

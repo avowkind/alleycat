@@ -35,20 +35,60 @@ observer at rest, the string experiences tension and eventually breaks,
 illustrating non-intuitive aspects of special relativity.
 ```
 
+### File Analysis
+
+Alleycat can analyze files and answer questions about their content using the `-f` or `--file` option:
+
+```bash
+# Basic file analysis
+alleycat -f docs/alleyfacts.pdf "Summarize this document"
+
+# Ask specific questions about the content
+alleycat -f docs/alleyfacts.pdf "What are the key features of alleycat mentioned in this document?"
+
+# Combine with markdown output
+alleycat -f docs/alleyfacts.pdf -m markdown "Extract the main points as a bulleted list"
+
+# Use with custom instructions
+alleycat -f docs/alleyfacts.pdf -i "You are a technical reviewer. Be critical and identify any issues or limitations in the document." "Review this document"
+```
+
+The file is temporarily uploaded to the LLM provider (OpenAI) for analysis and automatically deleted when the program exits. 
+
+#### Supported File Formats and Limitations
+
+The following file formats are currently supported:
+- PDF (.pdf)
+- Text (.txt)
+- Markdown (.md)
+- CSV (.csv)
+- JSON (.json)
+- JSONL (.jsonl)
+
+**Important limitations:**
+- **File Size**: Files must be within the token limit of the model being used. If your file is too large, you'll receive a token limit error.
+- **Content Processing**: The quality of analysis depends on the model's ability to parse and understand the file content.
+
+**Tips for handling large files:**
+1. Split the file into smaller parts
+2. Use a model with a larger context window (like gpt-4-turbo with a 128k token context)
+3. Extract only the most relevant sections before uploading
+
 ### Advanced Options
 
 Customize your experience with various command-line options:
 
 ```bash
-alleycat --model gpt-4 --temperature 0.9 --format markdown "Write a haiku about coding"
+alleycat --model gpt-4 --temperature 0.9 --mode markdown "Write a haiku about coding"
 In code, thoughts take flight, Binary truths weave through night, Silent keys alight. 
 ```
 
 Key options include:
 
-- `--model, -m`: Choose your LLM model
+- `--model`: Choose your LLM model
 - `--temperature, -t`: Adjust response creativity (0.0-2.0)
-- `--format, -f`: Set output format (text, markdown, json)
+- `--mode, -m`: Set output mode (text, markdown, json)
+- `--file, -f`: Upload and reference a file in your conversation
 - `--stream, -s`: Stream responses as they're generated
 - `--chat, -c`: Enter interactive chat mode with continuous conversation
 
@@ -117,7 +157,10 @@ alleycat --chat "Hello, tell me about yourself"
 alleycat --chat
 
 # talk with Dr Johnson or Diderot
-alleycat -c i- prompts/johnson.txt
+alleycat -c -i prompts/johnson.txt
+
+# Start a chat with a file and discuss its contents
+alleycat --chat -f docs/alleyfacts.pdf "Let's discuss this document about alleycat features"
 ```
 
 In interactive chat mode:
@@ -149,6 +192,27 @@ These laws first appeared in Asimov's 1942 short story "Runaround" and became a 
 Isaac Asimov created the Three Laws of Robotics. He was an American writer and professor of biochemistry, known for his works of science fiction and popular science. Asimov introduced these laws in his 1942 short story "Runaround," which was part of his Robot series. The laws became a central theme in many of his subsequent stories and novels about robots and have since become influential in discussions about AI ethics and robot behavior, even beyond the realm of fiction.
 
 >
+```
+
+Example chat session with a file:
+
+```
+$ alleycat --chat -f docs/alleyfacts.pdf "What is this document about?"
+
+Alleycat Interactive Chat
+
+This document is about AlleyCat, a command-line text processing utility that uses Large Language Models (LLMs) to transform input text. The document details the key features, usage examples, and capabilities of AlleyCat, including its ability to process text through standard input/output, support for various formatting options, and integration with Unix-style workflows.
+
+>What file formats does it support?
+
+According to the document, AlleyCat supports multiple file formats, including PDF, TXT, and CSV files. It can analyze these files when provided through the -f or --file option, allowing users to ask questions about the file content or extract information from them.
+
+>How does it handle file cleanup?
+
+The document mentions that when files are used with AlleyCat, they are temporarily uploaded to the LLM provider (specifically OpenAI) for analysis, and then automatically deleted when the program exits. This ensures that no files remain on the provider's servers after your session ends.
+
+>
+```
 
 Interactive chat mode maintains conversation context between messages, allowing the AI to reference earlier parts of the conversation. This makes it ideal for:
 
@@ -162,7 +226,7 @@ The conversation context is maintained through OpenAI's conversation API, which 
 You can combine chat mode with other options, such as model selection, temperature, and output format:
 
 ```bash
-alleycat --chat --model gpt-4o --temperature 0.8 --format markdown
+alleycat --chat --model gpt-4o --temperature 0.8 --mode markdown
 ```
 
 ## System-Wide Integration
