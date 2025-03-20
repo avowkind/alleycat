@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: alleycat
-Version: 0.2.0
+Version: 0.2.1
 Summary: A command line tool for chat conversations with LLMs
 Author-email: Andrew <andrew@groat.nz>
 License: MIT
@@ -41,11 +41,18 @@ Dynamic: license-file
 # AlleyCat - A command line tool for AI text processing
 
 ![AlleyCat](docs/alleycat.svg)
+
 Alleycat is a command-line text processing utility that transforms input text using Large Language Models (LLMs). Like traditional Unix tools such as `awk` or `sed`, alleycat reads from standard input or command arguments and writes transformed text to standard output. Instead of using pattern matching or scripted transformations, alleycat leverages AI to interpret and modify text based on natural language instructions.
 
 For comprehensive documentation, see [Alleycat Guide](docs/alleycat-guide.md).
 
-Warning: very new, not all tests passing, no build or deployment etc.
+Warning: This is primarily a test project for my working with AI tools. As such it is probably not suitable for production use.  
+
+There are other cool tools available:
+
+* openai - if you install the sdk there is a command line which allows API calls to be made.  This is works and is definitive but not very friendly.
+* claude code - lots of features and integration with the terminal and machine, can be used as a pipe or interactively. But its main purpose is a coding assistant. 
+* warp terminal - not a cli an entire terminal with AI built in - great for asking for what you want.
 
 ## Project Structure
 
@@ -162,7 +169,7 @@ uv run alleycat --help
 uv run alleycat "Your prompt here"
 
 # With options
-uv run alleycat --format markdown --temperature 0.7 "Your prompt here"
+uv run alleycat --mode markdown --temperature 0.7 "Your prompt here"
 ```
 
 ### Command Line Options
@@ -175,11 +182,15 @@ alleycat "Your prompt here"
 echo "Your prompt" | alleycat
 
 # With formatting options
-alleycat --format markdown --temperature 0.7 "Your prompt here"
+alleycat --mode markdown --temperature 0.7 "Your prompt here"
 
 # Using system instructions
 alleycat -i "You are a helpful assistant" "Your prompt here"
 alleycat -i prompts/custom-style.txt "Your prompt here"
+
+# Analyze a file
+alleycat -f docs/alleyfacts.pdf "Summarize this document"
+# Note: Currently only PDF files are supported
 
 # Interactive chat mode
 alleycat --chat "Hello, how are you today?"
@@ -191,9 +202,10 @@ alleycat --chat -i prompts/johnson.txt
 
 Available options:
 
-- `--model`, `-m`: Choose LLM model (default: gpt-4o-mini, env: ALLEYCAT_MODEL)
+- `--model`: Choose LLM model (default: gpt-4o-mini, env: ALLEYCAT_MODEL)
 - `--temperature`, `-t`: Sampling temperature 0.0-2.0 (default: 0.7)
-- `--format`, `-f`: Output format - text, markdown, or json (default: text)
+- `--mode`, `-m`: Output format - text, markdown, or json (default: text)
+- `--file`, `-f`: Upload and reference a PDF file in your conversation (currently only PDF format is supported)
 - `--api-key`: OpenAI API key (env: ALLEYCAT_OPENAI_API_KEY)
 - `--instructions`, `-i`: System instructions (string or file path)
 - `--verbose`, `-v`: Enable verbose debug output
