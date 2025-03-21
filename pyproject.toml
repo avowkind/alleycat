@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "alleycat"
-version = "0.2.1"
+version = "0.3.0"
 description = "A command line tool for chat conversations with LLMs"
 authors = [
     {name = "Andrew", email = "andrew@groat.nz"},

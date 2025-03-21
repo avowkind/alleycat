@@ -89,6 +89,28 @@ class LLMProvider(ABC):
         """
         pass
 
+    @abstractmethod
+    async def close(self) -> None:
+        """Clean up resources and close any open connections.
+
+        This method should be called when the provider is no longer needed.
+        It should clean up any resources, close connections, and handle any necessary cleanup.
+        """
+        pass
+
+    @abstractmethod
+    async def add_file(self, file_path: str) -> bool:
+        """Add a file for use with the LLM.
+
+        Args:
+            file_path: Path to the file to add
+
+        Returns:
+            True if file was added successfully, False otherwise
+
+        """
+        pass
+
 
 class LLMFactory(Protocol):
     """Protocol for LLM provider factories."""
