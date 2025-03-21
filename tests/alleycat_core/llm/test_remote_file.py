@@ -1,5 +1,6 @@
 """Tests for the remote_file module."""
 
+import asyncio
 import unittest
 from pathlib import Path
 from typing import Any
@@ -43,13 +44,13 @@ class TestRemoteFile(unittest.TestCase):
             self.test_file_dir.rmdir()
 
     @patch("alleycat_core.llm.remote_file.logging")
-    async def test_text_file_initialization(self, mock_logging: Any) -> None:
+    def test_text_file_initialization(self, mock_logging: Any) -> None:
         """Test initializing a text file."""
         # Create a TextFile instance
         text_file = TextFile(str(self.text_file_path))
 
         # Initialize the file
-        result = await text_file.initialize()
+        result = asyncio.run(text_file.initialize())
 
         # Verify initialization was successful
         self.assertTrue(result)
@@ -59,11 +60,11 @@ class TestRemoteFile(unittest.TestCase):
         mock_logging.info.assert_called_once()
 
     @patch("alleycat_core.llm.remote_file.logging")
-    async def test_text_file_prompt(self, mock_logging: Any) -> None:
+    def test_text_file_prompt(self, mock_logging: Any) -> None:
         """Test getting a prompt from a text file."""
         # Create and initialize a TextFile instance
         text_file = TextFile(str(self.text_file_path))
-        await text_file.initialize()
+        asyncio.run(text_file.initialize())
 
         # Get a file prompt
         prompt = text_file.get_file_prompt("Analyze this file")
@@ -83,13 +84,13 @@ class TestRemoteFile(unittest.TestCase):
         self.assertEqual(content[1]["text"], "Analyze this file")
 
     @patch("alleycat_core.llm.remote_file.logging")
-    async def test_uploaded_file_initialization(self, mock_logging: Any) -> None:
+    def test_uploaded_file_initialization(self, mock_logging: Any) -> None:
         """Test initializing an uploaded file."""
         # Create an UploadedFile instance
         uploaded_file = UploadedFile(str(self.text_file_path), self.mock_client)
 
         # Initialize the file (mock upload)
-        result = await uploaded_file.initialize()
+        result = asyncio.run(uploaded_file.initialize())
 
         # Verify initialization was successful
         self.assertTrue(result)
@@ -99,14 +100,14 @@ class TestRemoteFile(unittest.TestCase):
         self.mock_client.files.create.assert_called_once()
 
     @patch("alleycat_core.llm.remote_file.logging")
-    async def test_uploaded_file_cleanup(self, mock_logging: Any) -> None:
+    def test_uploaded_file_cleanup(self, mock_logging: Any) -> None:
         """Test cleaning up an uploaded file."""
         # Create and initialize an UploadedFile instance
         uploaded_file = UploadedFile(str(self.text_file_path), self.mock_client)
-        await uploaded_file.initialize()
+        asyncio.run(uploaded_file.initialize())
 
         # Clean up the file
-        result = await uploaded_file.cleanup()
+        result = asyncio.run(uploaded_file.cleanup())
 
         # Verify cleanup was successful
         self.assertTrue(result)
@@ -116,11 +117,11 @@ class TestRemoteFile(unittest.TestCase):
         self.mock_client.files.delete.assert_called_once_with("test_file_id")
 
     @patch("alleycat_core.llm.remote_file.logging")
-    async def test_uploaded_file_prompt(self, mock_logging: Any) -> None:
+    def test_uploaded_file_prompt(self, mock_logging: Any) -> None:
         """Test getting a prompt from an uploaded file."""
         # Create and initialize an UploadedFile instance
         uploaded_file = UploadedFile(str(self.text_file_path), self.mock_client)
-        await uploaded_file.initialize()
+        asyncio.run(uploaded_file.initialize())
 
         # Get a file prompt
         prompt = uploaded_file.get_file_prompt("Analyze this file")

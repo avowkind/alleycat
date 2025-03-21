@@ -435,3 +435,111 @@ alleycat "Hello, Alleycat!"
 Alleycat brings the power of AI to your command line in a clean, efficient package. Whether you're using it for quick queries in the terminal or integrating it system-wide for text processing, its flexibility and ease of use make it an invaluable tool for developers and writers alike.
 
 By setting up system-wide shortcuts, you can leverage Alleycat's capabilities in any application that handles text, making it a truly versatile assistant for all your AI-powered text processing needs.
+
+## External Tools
+
+Alleycat supports integration with external tools through the OpenAI Responses API. These tools extend the capabilities of the LLM, allowing it to access real-time information or search through document repositories.
+
+### Web Search
+
+The web search tool allows Alleycat to retrieve up-to-date information from the internet, making it useful for questions about current events, recent developments, or any information that might be beyond the model's training data.
+
+```bash
+# Get the latest information about a topic
+alleycat --tool web "What are the latest developments in quantum computing?"
+
+# Or use the simpler alias
+alleycat --web "What are the latest developments in quantum computing?"
+
+# Ask about current events
+alleycat --tool web "What were the major headlines today?"
+
+# Research technical information
+alleycat --tool web "What are the new features in Python 3.12?"
+```
+
+### File Search with Vector Store
+
+The file search tool enables Alleycat to search through document collections stored in a vector database. This is particularly useful for retrieving specific information from large document repositories or knowledge bases.
+
+```bash
+# Search for information in a specific vector store
+alleycat --tool file-search --vector-store alleycat_kb "Find information about neural networks"
+
+# Or use the --knowledge alias (preferred)
+alleycat --knowledge --vector-store alleycat_kb "Find information about neural networks"
+
+# Or the shorter -k alias
+alleycat -k --vector-store alleycat_kb "Find information about neural networks"
+
+# Ask detailed questions about your knowledge base
+alleycat --knowledge --vector-store vs_11111111111111 "What does our documentation say about error handling?"
+```
+
+Note: Before using the file search tool, you need to set up your vector store and upload documents to it through the OpenAI API.
+
+### Combining Tools
+
+You can also combine multiple tools in a single query for more complex information retrieval:
+
+```bash
+# Compare information from the web with your knowledge base
+alleycat --tool web --tool file-search --vector-store alleycat_kb "Compare the latest research on LLMs with what we have in our documentation"
+```
+
+Using aliases makes the command more concise:
+
+```bash
+# Same command with aliases
+alleycat --web --knowledge --vector-store vs_11111111111111 "Compare the latest research on LLMs with what we have in our documentation"
+
+# Even shorter with short-form aliases
+alleycat -w -k --vector-store vs_11111111111111 "Compare the latest research on LLMs with what we have in our documentation"
+```
+
+### Environment Variables
+
+Configure default settings for tools using environment variables:
+
+```bash
+# Set a default vector store ID
+export ALLEYCAT_VECTOR_STORE=vs_11111111111111
+```
+
+## Development
+
+1. Clone the repository and change to the project directory:
+
+```bash
+git clone https://github.com/avowkind/alleycat.git
+cd alleycat
+```
+
+2. Create and activate a virtual environment using Python 3.12:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate  # On Unix/macOS
+# or
+.venv\Scripts\activate     # On Windows
+```
+
+3. Install the package in development mode with dependencies:
+
+```bash
+pip install -e ".[dev]"
+```
+
+4. Set up your OpenAI API key:
+
+```bash
+export ALLEYCAT_OPENAI_API_KEY="your-api-key"
+# or add to .env file:
+echo "ALLEYCAT_OPENAI_API_KEY=your-api-key" > .env
+```
+
+5. Verify the installation:
+
+```bash
+alleycat "Hello, Alleycat!"
+```

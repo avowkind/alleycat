@@ -41,6 +41,8 @@ class LLMProvider(ABC):
         max_output_tokens: int | None = None,
         tools: list[ToolParam] | None = None,
         text: ResponseFormat = None,
+        web_search: bool = False,
+        vector_store_id: str | None = None,
         **kwargs: Any,
     ) -> LLMResponse | AsyncIterator[ResponseStreamEvent]:
         """Send a request to the LLM.
@@ -53,6 +55,8 @@ class LLMProvider(ABC):
             max_output_tokens: Maximum number of tokens to generate
             tools: Tools for function calling
             text: Text format configuration
+            web_search: Enable web search functionality
+            vector_store_id: Vector store ID for file search
             **kwargs: Additional provider-specific parameters
 
         Returns:

@@ -145,6 +145,8 @@ class OpenAIProvider(LLMProvider):
         max_output_tokens: int | None = None,
         tools: list[ToolParam] | None = None,
         text: ResponseFormat = None,
+        web_search: bool = False,
+        vector_store_id: str | None = None,
         **kwargs: Any,
     ) -> LLMResponse | AsyncIterator[ResponseStreamEvent]:
         """Send a request using OpenAI's Responses API."""
@@ -173,8 +175,40 @@ class OpenAIProvider(LLMProvider):
             if include is not None or self.config.include is not None:
                 params["include"] = include or self.config.include
 
+            # Handle tools configuration
+            applied_tools: list[ToolParam] = []
+
+            # Add web search tool if enabled
+            if web_search:
+                applied_tools.append({"type": "web_search_preview"})
+
+            # Add file search tool if vector store ID is provided and explicitly requested
+            file_search_requested = any(
+                pattern in str(kwargs.get("tools_requested", "")) for pattern in ["file_search", "file-search"]
+            )
+
+            if file_search_requested:
+                if not vector_store_id:
+                    logging.warning("File search tool requested but no vector store ID provided")
+                else:
+                    logging.info(f"Adding file search tool with vector store ID: {vector_store_id}")
+
+                    # Check if it has the required format (vs_*)
+                    if not vector_store_id.startswith("vs_"):
+                        logging.warning(f"Vector store ID {vector_store_id} doesn't match required format vs_*")
+
+                    applied_tools.append({"type": "file_search", "vector_store_ids": [vector_store_id]})
+
+            # Add any additional tools specified in parameters or config
             if tools is not None or self.config.tools is not None:
-                params["tools"] = tools or self.config.tools
+                extra_tools = tools or self.config.tools
+                if extra_tools:
+                    applied_tools.extend(extra_tools)
+
+            # Set tools parameter if we have any tools
+            if applied_tools:
+                params["tools"] = applied_tools
+                logging.info(f"Using tools: {applied_tools}")
 
             # Add file references if we have a remote file
             if self.remote_file and isinstance(input, str):
@@ -195,6 +229,9 @@ class OpenAIProvider(LLMProvider):
 
             # Add any other parameters
             params.update(kwargs)
+
+            # Remove any internal parameters that shouldn't be sent to the API
+            params.pop("tools_requested", None)
 
             # Set stream parameter
             if stream:

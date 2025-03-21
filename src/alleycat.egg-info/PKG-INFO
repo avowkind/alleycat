@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: alleycat
-Version: 0.3.0
+Version: 0.4.0
 Summary: A command line tool for chat conversations with LLMs
 Author-email: Andrew <andrew@groat.nz>
 License: MIT
@@ -192,6 +192,18 @@ alleycat -i prompts/custom-style.txt "Your prompt here"
 alleycat -f docs/alleyfacts.pdf "Summarize this document"
 # Note: Currently only PDF files are supported
 
+# Use web search tool
+alleycat --tool web "What is the latest news about Python?"
+# Or use the simpler alias
+alleycat --web "What is the latest news about Python?"
+alleycat -w "What one new thing I should know about Python"
+
+# Use file search with vector store
+alleycat --tool file-search --vector-store alleycat_kb "Find information about neural networks"
+# Or use the simpler aliases
+alleycat --knowledge --vector-store alleycat_kb "Find information about neural networks"
+alleycat -k --vector-store alleycat_kb "Find information about neural networks"
+
 # Interactive chat mode
 alleycat --chat "Hello, how are you today?"
 # or start with no initial prompt
@@ -206,6 +218,10 @@ Available options:
 - `--temperature`, `-t`: Sampling temperature 0.0-2.0 (default: 0.7)
 - `--mode`, `-m`: Output format - text, markdown, or json (default: text)
 - `--file`, `-f`: Upload and reference a PDF file in your conversation (currently only PDF format is supported)
+- `--tool`: Enable specific tools (available: web, file-search)
+- `--web`, `-w`: Enable web search (alias for `--tool web`)
+- `--knowledge`, `-k`: Enable file search (alias for `--tool file-search`)
+- `--vector-store`: Vector store ID for file search tool (env: ALLEYCAT_VECTOR_STORE)
 - `--api-key`: OpenAI API key (env: ALLEYCAT_OPENAI_API_KEY)
 - `--instructions`, `-i`: System instructions (string or file path)
 - `--verbose`, `-v`: Enable verbose debug output
@@ -217,6 +233,7 @@ Environment variables:
 - `ALLEYCAT_MODEL`: Default model to use
 - `ALLEYCAT_OPENAI_API_KEY`: OpenAI API key
 - `ALLEYCAT_TEMPERATURE`: Default temperature setting
+- `ALLEYCAT_VECTOR_STORE`: Default vector store ID for file search tool
 
 ## Package Management
 

@@ -79,6 +79,29 @@ file_option = typer.Option(
     "-f",
     help="Path to a file to upload and reference in the conversation",
 )
+tool_option = typer.Option(
+    None,
+    "--tool",
+    "-t",
+    help="Enable specific tools (web, file-search)",
+)
+web_option = typer.Option(
+    False,
+    "--web",
+    "-w",
+    help="Enable web search (alias for --tool web)",
+)
+file_search_option = typer.Option(
+    False,
+    "--knowledge",
+    "-k",
+    help="Enable file search (alias for --tool file-search)",
+)
+vector_store_option = typer.Option(
+    None,
+    "--vector-store",
+    help="Vector store ID for file search tool",
+)
 
 
 def get_prompt_from_stdin() -> str:
@@ -214,6 +237,9 @@ async def run_chat(
                     stream=True,
                     text=response_format,
                     instructions=instructions,
+                    web_search=settings.enable_web_search,
+                    vector_store_id=settings.vector_store_id,
+                    tools_requested=getattr(settings, "tools_requested", ""),
                 )
                 # Since the respond method can return either a stream or a regular response,
                 # we need to ensure we have a stream here
@@ -228,6 +254,9 @@ async def run_chat(
                     input=prompt,
                     text=response_format,
                     instructions=instructions,
+                    web_search=settings.enable_web_search,
+                    vector_store_id=settings.vector_store_id,
+                    tools_requested=getattr(settings, "tools_requested", ""),
                 )
 
                 # Since the respond method can return either a stream or a regular response,
@@ -293,6 +322,9 @@ async def run_interactive_chat(
                     text=response_format,
                     instructions=instructions,
                     stream=stream,
+                    web_search=settings.enable_web_search,
+                    vector_store_id=settings.vector_store_id,
+                    tools_requested=getattr(settings, "tools_requested", ""),
                 )
 
                 # Handle the response
@@ -384,33 +416,34 @@ def chat(
     chat_mode: bool = chat_option,
     instructions: str = instructions_option,
     file: str = file_option,
+    tools: str = tool_option,
+    web: bool = web_option,
+    file_search: bool = file_search_option,
+    vector_store: str | None = vector_store_option,
 ) -> None:
     """Send a prompt to the LLM and get a response.
 
-    The prompt can be provided in two ways:
-    1. As command line arguments: alleycat tell me a joke
-    2. Via stdin: echo "tell me a joke" | alleycat
+    Args:
+        ctx: Typer context
+        model: Model to use (overrides config)
+        temperature: Sampling temperature (overrides config)
+        output_mode: Output mode (text, markdown, json)
+        api_key: OpenAI API key (overrides config)
+        verbose: Enable verbose debug output
+        stream: Stream the response as it's generated
+        chat_mode: Interactive chat mode with continuous conversation
+        instructions: System instructions for the model
+        file: Path to a file to use in the conversation
+        tools: Enabled tools (web, file-search)
+        web: Enable web search (alias for --tool web)
+        file_search: Enable file search (alias for --tool file-search)
+        vector_store: Vector store ID for file search tool
 
-    System instructions can be provided either directly or from a file:
-    1. Direct: alleycat -i "You are a helpful assistant" "tell me a joke"
-    2. From file: alleycat -i prompts/assistant.txt "tell me a joke"
-
-    For interactive chat mode with continuous conversation:
-    alleycat --chat "Hello, how are you today?"
-    Or start a chat without an initial prompt:
-    alleycat --chat
-
-    To include a file for the model to analyze:
-    alleycat -f path/to/file.pdf "Analyze this file"
-    Text files (.txt, .log, .md, .csv) will be included directly in the prompt.
-    Binary files (.pdf, .json) will be uploaded to OpenAI.
-
-    To change the output mode:
-    alleycat -m markdown "Tell me a joke"
     """
     try:
-        # Set verbosity level
-        logging.set_verbose(verbose)
+        # Configure logging
+        if verbose:
+            logging.set_verbose(True)
 
         # Get prompt from command line args or stdin
         prompt = " ".join(ctx.args) if ctx.args else get_prompt_from_stdin()
@@ -431,20 +464,80 @@ def chat(
                 )
                 sys.exit(1)
 
-        # Load base settings from environment
+        # Create settings from environment and CLI options
         settings = Settings()
 
-        # Override with command line options if provided
-        if api_key is not None:
+        # For debug: log all environment variable values
+        if verbose:
+            logging.info(f"Settings loaded vector_store_id = {settings.vector_store_id}")
+
+        # Override settings with any provided arguments
+        if api_key:
             settings.openai_api_key = api_key
-        if model is not None:
+        if model:
             settings.model = model
         if temperature is not None:
             settings.temperature = temperature
-        if output_mode is not None:
+        if output_mode:
             settings.output_format = output_mode.value  # Use the value from the enum
+
+        # Set file path
         if file is not None:
             settings.file_path = file
+
+        # Process tools
+        if tools:
+            tool_values = tools.split(",")
+            settings.tools_requested = tools  # Store the raw tools string
+            for tool in tool_values:
+                tool = tool.strip().lower()
+                if tool == "web":
+                    settings.enable_web_search = True
+                elif tool == "file-search":
+                    # Always update the tools_requested to include file_search
+                    if "file-search" in settings.tools_requested and "file_search" not in settings.tools_requested:
+                        settings.tools_requested = settings.tools_requested.replace("file-search", "file_search")
+
+                    # Only override with CLI parameter if explicitly provided
+                    if vector_store:
+                        settings.vector_store_id = vector_store
+                        logging.info(f"Using vector store ID from command line: {settings.vector_store_id}")
+
+        # Handle --web option as an alias for --tool web
+        if web:
+            settings.enable_web_search = True
+            if not settings.tools_requested:
+                settings.tools_requested = "web"
+            elif "web" not in settings.tools_requested:
+                settings.tools_requested += ",web"
+
+        # Handle --file-search option as an alias for --tool file-search
+        if file_search:
+            # Make sure tools_requested has file_search
+            if not settings.tools_requested:
+                settings.tools_requested = "file_search"
+            elif "file_search" not in settings.tools_requested and "file-search" not in settings.tools_requested:
+                settings.tools_requested += ",file_search"
+
+        # Ensure the tools_requested contains file_search if file-search is requested
+        if tools and ("file-search" in tools or "file_search" in tools):
+            # Make sure tools_requested has file_search
+            if "file_search" not in settings.tools_requested:
+                settings.tools_requested = (
+                    f"{settings.tools_requested},file_search" if settings.tools_requested else "file_search"
+                )
+
+            # Log vector store information
+            if logging.is_verbose():
+                logging.info(f"Using vector store ID: {settings.vector_store_id}")
+
+        # For debug: Log the settings
+        if verbose:
+            logging.info(
+                f"Final settings: enable_web_search={settings.enable_web_search}, "
+                f"vector_store_id={settings.vector_store_id}, "
+                f"tools_requested={settings.tools_requested}"
+            )
 
         # Handle instructions
         instruction_text = None
