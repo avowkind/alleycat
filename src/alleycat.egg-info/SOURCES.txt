@@ -28,10 +28,12 @@ src/alleycat_core/llm/base.py
 src/alleycat_core/llm/evaluation.py
 src/alleycat_core/llm/openai.py
 src/alleycat_core/llm/py.typed
+src/alleycat_core/llm/remote_file.py
 src/alleycat_core/llm/types.py
 src/alleycat_core/llm/__pycache__/__init__.cpython-313.pyc
 src/alleycat_core/llm/__pycache__/base.cpython-313.pyc
 src/alleycat_core/llm/__pycache__/evaluation.cpython-313.pyc
 src/alleycat_core/llm/__pycache__/openai.cpython-313.pyc
+src/alleycat_core/llm/__pycache__/remote_file.cpython-313.pyc
 src/alleycat_core/llm/__pycache__/types.cpython-313.pyc
 src/alleycat_core/utils/__init__.py

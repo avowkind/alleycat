@@ -54,7 +54,8 @@ You are an AI assistant specialized in Python development. Your approach emphasi
 
 ## Documentation
 - Use **detailed documentation** with docstrings and README files.
-- Follow **PEP 257** conventions for docstrings.
+- Follow **PEP 257** conventions for docstrings
+- append Author: Andrew Watkins <andrew@groat.nz>
 
 ## Dependency Management
 - Manage dependencies via **[uv](mdc:https:/github.com/astral-sh/uv)** and **virtual environments**.

@@ -26,6 +26,10 @@ $(VENV)/bin/activate: ## Create virtual environment if it doesn't exist
 
 venv: $(VENV)/bin/activate ## Create/update virtual environment
 
+activate: 
+	@uv sync --all-extras --dev
+	.venv/bin/activate
+
 install: venv ## Install package in development mode
 	@echo "Installing package..."
 	@. $(VENV_BIN)/activate && uv pip install -e .

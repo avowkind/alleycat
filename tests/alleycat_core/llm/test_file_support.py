@@ -20,7 +20,7 @@ async def test_file_upload_delete(mock_async_openai_client: mock.AsyncMock) -> N
     """Test file upload and deletion."""
     # Create a sample file reference
     fixtures_path = Path(__file__).parent.parent.parent / "fixtures"
-    sample_file_path = fixtures_path / "sample.txt"
+    sample_file_path = fixtures_path / "sample.pdf"
 
     # Skip test if file doesn't exist
     if not sample_file_path.exists():
@@ -39,22 +39,22 @@ async def test_file_upload_delete(mock_async_openai_client: mock.AsyncMock) -> N
     mock_async_openai_client.files.delete.return_value = None
 
     # Test upload
-    file_id = await provider.upload_file(str(sample_file_path))
-    assert file_id == "file-123456"
-    assert provider.file_id == "file-123456"
+    success = await provider.add_file(str(sample_file_path))
+    assert success is True
+    assert provider.remote_file is not None
 
     # Check that the client was called correctly
     mock_async_openai_client.files.create.assert_called_once()
     args, kwargs = mock_async_openai_client.files.create.call_args
-    assert kwargs["purpose"] == "assistants"
+    assert kwargs["purpose"] == "user_data"
 
-    # Test delete
-    result = await provider.delete_file(file_id)
+    # Test cleanup
+    result = await provider.cleanup_file()
     assert result is True
-    assert provider.file_id is None
+    assert provider.remote_file is None
 
     # Check that the client was called correctly
-    mock_async_openai_client.files.delete.assert_called_once_with("file-123456")
+    mock_async_openai_client.files.delete.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -63,7 +63,6 @@ async def test_respond_with_file(mock_async_openai_client: mock.AsyncMock) -> No
     config = OpenAIConfig(api_key="test-key")
     provider = OpenAIProvider(config)
     provider.client = mock_async_openai_client
-    provider.file_id = "file-123456"  # Set a file ID directly
 
     # Mock the responses.create response
     mock_response = mock.AsyncMock()
@@ -71,6 +70,8 @@ async def test_respond_with_file(mock_async_openai_client: mock.AsyncMock) -> No
     mock_async_openai_client.responses.create.return_value = mock_response
 
     # Call the respond method
+    file_path = Path(__file__).parent.parent.parent / "fixtures" / "sample.txt"
+    await provider.add_file(str(file_path))
     await provider.respond("Analyze this file")
 
     # Check that the client was called with a properly structured input containing the file reference
@@ -88,15 +89,11 @@ async def test_respond_with_file(mock_async_openai_client: mock.AsyncMock) -> No
     assert structured_input["role"] == "user"
     assert isinstance(structured_input["content"], list)
 
-    # Verify file reference
-    file_content = structured_input["content"][0]
-    assert file_content["type"] == "input_file"
-    assert file_content["file_id"] == "file-123456"
-
-    # Verify text content
-    text_content = structured_input["content"][1]
-    assert text_content["type"] == "input_text"
-    assert text_content["text"] == "Analyze this file"
+    # Verify file reference and text content
+    content = structured_input["content"]
+    assert len(content) == 2
+    assert content[0]["type"] == "input_text"  # First item is file content
+    assert content[1]["type"] == "input_text"  # Second item is user query
 
 
 @pytest.mark.asyncio
@@ -105,7 +102,6 @@ async def test_respond_with_file_and_instructions(mock_async_openai_client: mock
     config = OpenAIConfig(api_key="test-key")
     provider = OpenAIProvider(config)
     provider.client = mock_async_openai_client
-    provider.file_id = "file-123456"  # Set a file ID directly
 
     # Mock the responses.create response
     mock_response = mock.AsyncMock()
@@ -126,4 +122,4 @@ async def test_respond_with_file_and_instructions(mock_async_openai_client: mock
     # Verify instructions were preserved and enhanced
     assert "instructions" in kwargs
     assert original_instructions in kwargs["instructions"]
-    assert "The user has attached a file for you to analyze" in kwargs["instructions"]
+    assert "Act as a helpful assistant" in kwargs["instructions"]

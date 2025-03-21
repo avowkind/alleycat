@@ -10,10 +10,10 @@ Author: Andrew Watkins <andrew@groat.nz>
 """
 
 import asyncio
-import atexit
 import enum
 import sys
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, TypeGuard
 
@@ -27,7 +27,6 @@ from rich.prompt import Prompt
 from alleycat_core import logging
 from alleycat_core.config.settings import Settings
 from alleycat_core.llm import OpenAIFactory
-from alleycat_core.llm.openai import OpenAIConfig, OpenAIProvider
 from alleycat_core.llm.types import ResponseFormat
 
 console = Console()
@@ -38,32 +37,6 @@ app = typer.Typer(
     help="A command line tool for chat conversations with LLMs",
     add_completion=True,
 )
-
-# Store the uploaded file id for cleanup on exit
-_uploaded_file_id: str | None = None
-_llm_provider: Any | None = None
-
-
-def cleanup_file() -> None:
-    """Clean up uploaded file when the program exits."""
-    global _uploaded_file_id, _llm_provider
-
-    if _uploaded_file_id and _llm_provider:
-        logging.info(f"Cleaning up file with ID: {_uploaded_file_id}")
-        try:
-            # Use the OpenAI SDK directly rather than through the provider's async method
-            if hasattr(_llm_provider, "client") and hasattr(_llm_provider.client, "files"):
-                import openai
-
-                client = openai.OpenAI(api_key=_llm_provider.config.api_key)
-                client.files.delete(_uploaded_file_id)
-                logging.info(f"Deleted file with ID: {_uploaded_file_id}")
-        except Exception as e:
-            logging.error(f"Error cleaning up file: {e}")
-
-
-# Register the cleanup function to run at exit
-atexit.register(cleanup_file)
 
 
 class OutputMode(str, enum.Enum):
@@ -195,6 +168,31 @@ def read_instructions_file(filepath: str) -> str:
         sys.exit(1)
 
 
+@asynccontextmanager
+async def create_llm(settings: Settings) -> AsyncIterator[Any]:
+    """Create an LLM instance as a context manager."""
+    factory = OpenAIFactory()
+    llm = factory.create(
+        api_key=settings.openai_api_key,
+        model=settings.model,
+        temperature=settings.temperature,
+    )
+
+    try:
+        # Setup file if specified
+        if settings.file_path:
+            success = await llm.add_file(settings.file_path)
+            if not success:
+                raise ValueError(f"Failed to setup file: {settings.file_path}")
+
+            if logging.is_verbose():
+                logging.info(f"Successfully setup file: {settings.file_path}")
+
+        yield llm
+    finally:
+        await llm.close()
+
+
 async def run_chat(
     prompt: str,
     settings: Settings,
@@ -202,165 +200,50 @@ async def run_chat(
     instructions: str | None = None,
 ) -> None:
     """Run the chat interaction with the LLM."""
-    global _llm_provider
-    # Create LLM provider
-    factory = OpenAIFactory()
-    llm = factory.create(
-        api_key=settings.openai_api_key,
-        model=settings.model,
-        temperature=settings.temperature,
-        file_id=settings.file_id,
-    )
-    _llm_provider = llm
-
     # Prepare response format based on settings
     response_format: ResponseFormat = None
     if settings.output_format == "json":
         response_format = {"format": "json"}
 
-    try:
-        if stream:
-            # Use the respond method with streaming
-            response_stream = await llm.respond(
-                input=prompt,
-                stream=True,
-                text=response_format,
-                instructions=instructions,
-            )
-            # Since the respond method can return either a stream or a regular response,
-            # we need to ensure we have a stream here
-            if isinstance(response_stream, AsyncIterator):
-                await handle_stream(response_stream, settings)
-            else:
-                # This should never happen with stream=True
-                raise TypeError("Expected streaming response but got non-streaming response")
-        else:
-            # Use the respond method without streaming
-            response = await llm.respond(
-                input=prompt,
-                text=response_format,
-                instructions=instructions,
-            )
-
-            # Since the respond method can return either a stream or a regular response,
-            # we need to ensure we have a regular response here
-            if not isinstance(response, AsyncIterator):
-                # Get response text from the LLMResponse object
-                response_text = response.output_text
-
-                # Format and display response
-                if settings.output_format == "markdown":
-                    logging.output(str(Markdown(response_text)))
-                elif settings.output_format == "json":
-                    logging.output_console.print_json(response_text)
-                else:
-                    logging.output(response_text)
-
-                if logging.is_verbose() and response.usage:
-                    total = response.usage.total_tokens
-                    prompt_tokens = response.usage.prompt_tokens
-                    completion_tokens = response.usage.completion_tokens
-                    logging.info(
-                        f"Tokens used: [cyan]{total}[/cyan] (prompt: {prompt_tokens}, completion: {completion_tokens})"
-                    )
-            else:
-                # This should never happen with stream=False
-                raise TypeError("Expected non-streaming response but got streaming response")
-    except Exception as e:
-        logging.error(str(e))
-        if logging.is_verbose():
-            logging.error("Traceback:", style="bold")
-            import traceback
-
-            logging.error(traceback.format_exc())
-        raise
-
-
-async def run_interactive_chat(
-    initial_prompt: str,
-    settings: Settings,
-    stream: bool = False,
-    instructions: str | None = None,
-) -> None:
-    """Run interactive chat mode with continuous conversation."""
-    global _llm_provider
-    # Create LLM provider
-    factory = OpenAIFactory()
-    llm = factory.create(
-        api_key=settings.openai_api_key,
-        model=settings.model,
-        temperature=settings.temperature,
-        file_id=settings.file_id,
-    )
-    _llm_provider = llm
-
-    # Display opening banner
-    console.print("[bold]Alleycat Interactive Chat[/bold]")
-
-    # Prepare response format based on settings
-    response_format: ResponseFormat = None
-    if settings.output_format == "json":
-        response_format = {"format": "json"}
-
-    # Initial prompt from the user
-    current_prompt = initial_prompt
-
-    try:
-        while True:
-            # Get response from LLM - no need to manage previous_response_id
-            # as it's now handled in the provider
-            response = await llm.respond(
-                input=current_prompt,
-                text=response_format,
-                instructions=instructions,
-                stream=stream,
-            )
-
-            # Handle the response
+    async with create_llm(settings) as llm:
+        try:
             if stream:
-                if isinstance(response, AsyncIterator):
-                    # For streaming, we need to accumulate the response as we display it
-                    accumulated_text = ""
-                    async for event in response:
-                        if is_text_delta_event(event):
-                            accumulated_text += event.delta
-                            # Update the display - we'll use the same approach as handle_stream
-                            if settings.output_format == "markdown":
-                                console.print(Markdown(event.delta), end="")
-                            else:
-                                console.print(event.delta, end="")
-                        elif event.type == "response.completed" and hasattr(event, "response"):
-                            # Response ID is now tracked by the provider
-                            console.print("\n")  # Add a newline at the end
-                        elif is_error_event(event):
-                            error_msg = event.error.message
-                            if "context_length_exceeded" in error_msg or "maximum limit" in error_msg:
-                                logging.error(
-                                    "Error: The conversation has grown too large for the model's context window."
-                                )
-                                logging.error(
-                                    "Try starting a new conversation or using a model with a larger context window."
-                                )
-                            elif "rate limit" in error_msg.lower():
-                                logging.error("Rate limit error: Too many requests in a short period.")
-                                logging.error("Please wait a moment before continuing.")
-                            else:
-                                logging.error(f"Error in stream: {error_msg}")
-                            raise Exception(error_msg)
+                # Use the respond method with streaming
+                response_stream = await llm.respond(
+                    input=prompt,
+                    stream=True,
+                    text=response_format,
+                    instructions=instructions,
+                )
+                # Since the respond method can return either a stream or a regular response,
+                # we need to ensure we have a stream here
+                if isinstance(response_stream, AsyncIterator):
+                    await handle_stream(response_stream, settings)
                 else:
+                    # This should never happen with stream=True
                     raise TypeError("Expected streaming response but got non-streaming response")
             else:
-                # Non-streaming response
-                if not isinstance(response, AsyncIterator):
-                    # Display the response - response ID is now tracked by the provider
-                    if settings.output_format == "markdown":
-                        console.print(Markdown(response.output_text))
-                    elif settings.output_format == "json":
-                        console.print_json(response.output_text)
-                    else:
-                        console.print(response.output_text)
+                # Use the respond method without streaming
+                response = await llm.respond(
+                    input=prompt,
+                    text=response_format,
+                    instructions=instructions,
+                )
 
-                    # Display token usage if verbose
+                # Since the respond method can return either a stream or a regular response,
+                # we need to ensure we have a regular response here
+                if not isinstance(response, AsyncIterator):
+                    # Get response text from the LLMResponse object
+                    response_text = response.output_text
+
+                    # Format and display response
+                    if settings.output_format == "markdown":
+                        logging.output(Markdown(response_text))
+                    elif settings.output_format == "json":
+                        logging.output_console.print_json(response_text)
+                    else:
+                        logging.output(response_text)
+
                     if logging.is_verbose() and response.usage:
                         total = response.usage.total_tokens
                         prompt_tokens = response.usage.prompt_tokens
@@ -370,27 +253,123 @@ async def run_interactive_chat(
                             f"(prompt: {prompt_tokens}, completion: {completion_tokens})"
                         )
                 else:
+                    # This should never happen with stream=False
                     raise TypeError("Expected non-streaming response but got streaming response")
+        except Exception as e:
+            logging.error(str(e))
+            if logging.is_verbose():
+                logging.error("Traceback:", style="bold")
+                import traceback
 
-            # Get the next prompt from the user
-            console.print("")
-            try:
-                current_prompt = Prompt.ask("[bold cyan]>[/bold cyan]")
-                if not current_prompt.strip():
-                    # If user entered empty input, exit
+                logging.error(traceback.format_exc())
+            raise
+
+
+async def run_interactive_chat(
+    initial_prompt: str,
+    settings: Settings,
+    stream: bool = False,
+    instructions: str | None = None,
+) -> None:
+    """Run interactive chat mode with continuous conversation."""
+    # Display opening banner
+    console.print("[bold]Alleycat Interactive Chat[/bold]")
+
+    async with create_llm(settings) as llm:
+        # Prepare response format based on settings
+        response_format: ResponseFormat = None
+        if settings.output_format == "json":
+            response_format = {"format": "json"}
+
+        # Initial prompt from the user
+        current_prompt = initial_prompt
+
+        try:
+            while True:
+                # Get response from LLM - no need to manage previous_response_id
+                # as it's now handled in the provider
+                response = await llm.respond(
+                    input=current_prompt,
+                    text=response_format,
+                    instructions=instructions,
+                    stream=stream,
+                )
+
+                # Handle the response
+                if stream:
+                    if isinstance(response, AsyncIterator):
+                        # For streaming, we need to accumulate the response as we display it
+                        accumulated_text = ""
+                        async for event in response:
+                            if is_text_delta_event(event):
+                                accumulated_text += event.delta
+                                # Update the display - we'll use the same approach as handle_stream
+                                if settings.output_format == "markdown":
+                                    console.print(Markdown(event.delta), end="")
+                                else:
+                                    console.print(event.delta, end="")
+                            elif event.type == "response.completed" and hasattr(event, "response"):
+                                # Response ID is now tracked by the provider
+                                console.print("\n")  # Add a newline at the end
+                            elif is_error_event(event):
+                                error_msg = event.error.message
+                                if "context_length_exceeded" in error_msg or "maximum limit" in error_msg:
+                                    logging.error(
+                                        "Error: The conversation has grown too large for the model's context window."
+                                    )
+                                    logging.error(
+                                        "Try starting a new conversation or using a model with a larger context window."
+                                    )
+                                elif "rate limit" in error_msg.lower():
+                                    logging.error("Rate limit error: Too many requests in a short period.")
+                                    logging.error("Please wait a moment before continuing.")
+                                else:
+                                    logging.error(f"Error in stream: {error_msg}")
+                                raise Exception(error_msg)
+                    else:
+                        raise TypeError("Expected streaming response but got non-streaming response")
+                else:
+                    # Non-streaming response
+                    if not isinstance(response, AsyncIterator):
+                        # Display the response - response ID is now tracked by the provider
+                        if settings.output_format == "markdown":
+                            console.print(Markdown(response.output_text))
+                        elif settings.output_format == "json":
+                            console.print_json(response.output_text)
+                        else:
+                            console.print(response.output_text)
+
+                        # Display token usage if verbose
+                        if logging.is_verbose() and response.usage:
+                            total = response.usage.total_tokens
+                            prompt_tokens = response.usage.prompt_tokens
+                            completion_tokens = response.usage.completion_tokens
+                            logging.info(
+                                f"Tokens used: [cyan]{total}[/cyan] "
+                                f"(prompt: {prompt_tokens}, completion: {completion_tokens})"
+                            )
+                    else:
+                        raise TypeError("Expected non-streaming response but got streaming response")
+
+                # Get the next prompt from the user
+                console.print("")
+                try:
+                    current_prompt = Prompt.ask("[bold cyan]>[/bold cyan]")
+                    if not current_prompt.strip():
+                        # If user entered empty input, exit
+                        break
+                except KeyboardInterrupt:
+                    console.print("\nExiting chat...")
                     break
-            except KeyboardInterrupt:
-                console.print("\nExiting chat...")
-                break
 
-    except Exception as e:
-        logging.error(str(e))
-        if logging.is_verbose():
-            logging.error("Traceback:", style="bold")
-            import traceback
+        except Exception as e:
+            logging.error(str(e))
+            if logging.is_verbose():
+                logging.error("Traceback:", style="bold")
+                import traceback
 
-            logging.error(traceback.format_exc())
-        raise
+                logging.error(traceback.format_exc())
+            raise
 
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
@@ -423,6 +402,8 @@ def chat(
 
     To include a file for the model to analyze:
     alleycat -f path/to/file.pdf "Analyze this file"
+    Text files (.txt, .log, .md, .csv) will be included directly in the prompt.
+    Binary files (.pdf, .json) will be uploaded to OpenAI.
 
     To change the output mode:
     alleycat -m markdown "Tell me a joke"
@@ -483,46 +464,6 @@ def chat(
             )
             sys.exit(1)
 
-        # Handle file upload if specified
-        if settings.file_path:
-            try:
-                # Create a temporary OpenAI provider to upload the file
-                config = OpenAIConfig(api_key=settings.openai_api_key)
-                file_provider = OpenAIProvider(config)
-
-                # Upload the file
-                global _uploaded_file_id
-                _uploaded_file_id = asyncio.run(file_provider.upload_file(settings.file_path))
-                settings.file_id = _uploaded_file_id
-
-                if logging.is_verbose():
-                    logging.info(f"Uploaded file: {settings.file_path}")
-                    logging.info(f"File ID: {settings.file_id}")
-            except ValueError as e:
-                # This is likely due to an unsupported file format
-                logging.error(str(e))
-                sys.exit(1)
-            except FileNotFoundError as e:
-                # File not found
-                logging.error(str(e))
-                logging.error("Please check the file path and try again.")
-                sys.exit(1)
-            except Exception as e:
-                # General error during file upload
-                error_msg = str(e)
-                if "context_length_exceeded" in error_msg or "maximum limit" in error_msg:
-                    logging.error("File size error: The file exceeds the token limit for the model.")
-                    logging.error("Solutions:")
-                    logging.error("1. Try a smaller file")
-                    logging.error("2. Split the content into multiple smaller files")
-                    logging.error("3. Try a different model with a larger token context")
-                elif "rate limit" in error_msg.lower():
-                    logging.error("Rate limit error: Too many requests in a short period.")
-                    logging.error("Please wait a moment and try again.")
-                else:
-                    logging.error(f"Error uploading file: {error_msg}")
-                sys.exit(1)
-
         # Run in interactive chat mode if --chat is specified
         if chat_mode:
             try:
@@ -534,6 +475,15 @@ def chat(
             # Run the normal chat interaction
             asyncio.run(run_chat(prompt, settings, stream, instruction_text))
 
+    except ValueError as e:
+        # This could be due to file setup issues
+        logging.error(str(e))
+        sys.exit(1)
+    except FileNotFoundError as e:
+        # File not found
+        logging.error(str(e))
+        logging.error("Please check the file path and try again.")
+        sys.exit(1)
     except Exception as e:
         logging.error(str(e))
         if verbose:
