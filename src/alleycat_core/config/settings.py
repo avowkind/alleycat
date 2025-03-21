@@ -32,6 +32,11 @@ class Settings(BaseSettings):
         default="text", description="Output format for responses"
     )
 
+    # Tool settings
+    enable_web_search: bool = Field(default=False, description="Enable web search tool")
+    vector_store_id: str = Field(default="", description="Vector store ID for file search tool")
+    tools_requested: str = Field(default="", description="Comma-separated list of requested tools")
+
     model_config = SettingsConfigDict(
         env_prefix="ALLEYCAT_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
