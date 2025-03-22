@@ -22,6 +22,7 @@ def test_openai_factory() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.requires_api
 async def test_provider_respond_basic(openai_config: OpenAIConfig) -> None:
     """Test basic response functionality of OpenAIProvider.
 

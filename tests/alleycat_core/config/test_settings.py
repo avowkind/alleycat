@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import platformdirs
 import pytest
 from pydantic import ValidationError
 
@@ -43,7 +44,10 @@ def test_default_settings(clean_env: None) -> None:
     assert settings.max_tokens is None
     assert settings.max_history == 100
     assert settings.output_format == "text"
-    assert settings.history_file == Path.home() / ".alleycat" / "history.json"
+
+    # Get the expected path based on platformdirs
+    expected_data_dir = platformdirs.user_data_dir("alleycat")
+    assert settings.history_file == Path(expected_data_dir) / "history.json"
 
 
 def test_environment_override(monkeypatch: "MonkeyPatch") -> None:

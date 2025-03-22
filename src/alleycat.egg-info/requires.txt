@@ -5,6 +5,7 @@ pydantic>=2.6.1
 pydantic-settings>=2.1.0
 python-dotenv>=1.0.0
 PyYAML>=6.0.1
+platformdirs>=4.0.0
 
 [dev]
 pytest>=8.0.0

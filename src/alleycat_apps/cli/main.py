@@ -24,6 +24,7 @@ from rich.live import Live
 from rich.markdown import Markdown
 from rich.prompt import Prompt
 
+from alleycat_apps.cli.init_cmd import main as init_main
 from alleycat_core import logging
 from alleycat_core.config.settings import Settings
 from alleycat_core.llm import OpenAIFactory
@@ -101,6 +102,16 @@ vector_store_option = typer.Option(
     None,
     "--vector-store",
     help="Vector store ID for file search tool",
+)
+init_option = typer.Option(
+    False,
+    "--init",
+    help="Run the initialization wizard to set up configuration",
+)
+remove_config_option = typer.Option(
+    False,
+    "--remove-config",
+    help="Remove AlleyCat configuration and data files",
 )
 
 
@@ -420,6 +431,8 @@ def chat(
     web: bool = web_option,
     file_search: bool = file_search_option,
     vector_store: str | None = vector_store_option,
+    init: bool = init_option,
+    remove_config: bool = remove_config_option,
 ) -> None:
     """Send a prompt to the LLM and get a response.
 
@@ -438,12 +451,26 @@ def chat(
         web: Enable web search (alias for --tool web)
         file_search: Enable file search (alias for --tool file-search)
         vector_store: Vector store ID for file search tool
+        init: Run the initialization wizard to set up configuration
+        remove_config: Remove AlleyCat configuration and data files
 
     """
     try:
         # Configure logging
         if verbose:
             logging.set_verbose(True)
+
+        # Check if init was requested
+        if init:
+            # Run the initialization wizard
+            init_main()
+            return
+
+        # Check if config removal was requested
+        if remove_config:
+            # Run the init command with remove flag
+            init_main(remove=True)
+            return
 
         # Get prompt from command line args or stdin
         prompt = " ".join(ctx.args) if ctx.args else get_prompt_from_stdin()
@@ -464,13 +491,16 @@ def chat(
                 )
                 sys.exit(1)
 
-        # Create settings from environment and CLI options
+        # Create settings with priority order:
+        # 1. Default values (lowest priority)
         settings = Settings()
 
-        # For debug: log all environment variable values
-        if verbose:
-            logging.info(f"Settings loaded vector_store_id = {settings.vector_store_id}")
+        # 2. Load from config file
+        settings.load_from_file()
 
+        # 3. Environment variables (handled by pydantic)
+
+        # 4. Command-line arguments (highest priority)
         # Override settings with any provided arguments
         if api_key:
             settings.openai_api_key = api_key
@@ -480,6 +510,10 @@ def chat(
             settings.temperature = temperature
         if output_mode:
             settings.output_format = output_mode.value  # Use the value from the enum
+
+        # For debug: log all environment variable values
+        if verbose:
+            logging.info(f"Settings loaded vector_store_id = {settings.vector_store_id}")
 
         # Set file path
         if file is not None:
@@ -550,12 +584,28 @@ def chat(
 
         # Validate required settings
         if not settings.openai_api_key:
-            logging.error(
-                "OpenAI API key is required. "
-                "Set it via ALLEYCAT_OPENAI_API_KEY environment variable "
-                "or --api-key option."
-            )
-            sys.exit(1)
+            # No API key found, check if config file exists
+            if settings.config_file is None or not settings.config_file.exists():
+                # No config file and no API key, run initialization wizard automatically
+                console.print("[yellow]No configuration or API key found. Running initialization wizard...[/yellow]")
+                init_main(remove=False)
+
+                # After init, reload settings
+                settings = Settings()
+                settings.load_from_file()
+
+                # If we still don't have an API key, exit with error
+                if not settings.openai_api_key:
+                    logging.error("OpenAI API key is still not configured. Exiting.")
+                    sys.exit(1)
+            else:
+                # Config file exists but no API key, display normal error
+                logging.error(
+                    "OpenAI API key is required. "
+                    "Set it via ALLEYCAT_OPENAI_API_KEY environment variable "
+                    "or --api-key option."
+                )
+                sys.exit(1)
 
         # Run in interactive chat mode if --chat is specified
         if chat_mode:
@@ -588,4 +638,5 @@ def chat(
 
 
 if __name__ == "__main__":
+    # Run the Typer app directly - all command line args are handled by chat
     app()
