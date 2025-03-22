@@ -12,8 +12,10 @@ src/alleycat.egg-info/top_level.txt
 src/alleycat_apps/__init__.py
 src/alleycat_apps/__pycache__/__init__.cpython-313.pyc
 src/alleycat_apps/cli/__init__.py
+src/alleycat_apps/cli/init_cmd.py
 src/alleycat_apps/cli/main.py
 src/alleycat_apps/cli/__pycache__/__init__.cpython-313.pyc
+src/alleycat_apps/cli/__pycache__/init_cmd.cpython-313.pyc
 src/alleycat_apps/cli/__pycache__/main.cpython-313.pyc
 src/alleycat_core/__init__.py
 src/alleycat_core/logging.py

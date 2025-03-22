@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "alleycat"
-version = "0.4.0"
+version = "0.5.0"
 description = "A command line tool for chat conversations with LLMs"
 authors = [
     {name = "Andrew", email = "andrew@groat.nz"},
@@ -17,6 +17,7 @@ dependencies = [
     "pydantic-settings>=2.1.0",
     "python-dotenv>=1.0.0",
     "PyYAML>=6.0.1",
+    "platformdirs>=4.0.0",
 ]
 requires-python = ">=3.12"
 readme = "README.md"
@@ -35,6 +36,7 @@ classifiers = [
 
 [project.scripts]
 alleycat = "alleycat_apps.cli.main:app"
+alleycat-init = "alleycat_apps.cli.init_cmd:app"
 
 [project.optional-dependencies]
 dev = [
@@ -77,11 +79,13 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "requires_api: marks tests that make real API calls and should only run with --api flag",
+]
 
 [tool.ruff]
 line-length = 120
 target-version = "py312"
-ignore = ["D203", "D213"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -100,6 +104,7 @@ select = [
     "UP",  # pyupgrade
     "D",   # pydocstyle
 ]
+ignore = ["D203", "D213", "E402"]
 
 [dependency-groups]
 dev = [

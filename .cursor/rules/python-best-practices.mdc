@@ -38,6 +38,12 @@ You are an AI assistant specialized in Python development. Your approach emphasi
 ## Error Handling and Logging
 - Implement **robust error handling** and logging, including context capture.
 
+## File Operations
+- **Always specify encoding** when using `open()`: `open(filename, mode, encoding="utf-8")`
+- Use context managers (with statements) for all file operations
+- Prefer Path objects from pathlib over string manipulation for file paths
+- Handle file exceptions explicitly with try/except blocks
+
 ## Testing
 - **Comprehensive testing** with pytest.
 - **Do NOT use the unittest module**.

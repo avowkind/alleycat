@@ -22,10 +22,7 @@ def test_response_evaluation_validation():
 def test_llm_test_case_creation():
     """Test LLMTestCase creation and validation."""
     # Minimal valid test case
-    test_case = LLMTestCase(
-        name="test",
-        prompt="Return the number 42"
-    )
+    test_case = LLMTestCase(name="test", prompt="Return the number 42")
     assert test_case.name == "test"
     assert test_case.prompt == "Return the number 42"
     assert test_case.min_score == 0.8  # default value
@@ -40,7 +37,7 @@ def test_llm_test_case_creation():
         min_score=0.9,
         tools=["json_validator"],
         instructions="Return valid JSON",
-        settings={"temperature": 0.2}
+        settings={"temperature": 0.2},
     )
     assert test_case.min_score == 0.9
     assert len(test_case.expected_patterns) == 1
@@ -73,7 +70,7 @@ def test_evaluator_basic_evaluation():
         prompt="Return the number 42",
         expected_patterns=[r"42"],
         required_elements=["42"],
-        min_score=0.8
+        min_score=0.8,
     )
 
     # Perfect match
@@ -95,10 +92,7 @@ def test_evaluator_forbidden_elements():
     """Test evaluation with forbidden elements."""
     evaluator = ResponseEvaluator()
     test_case = LLMTestCase(
-        name="forbidden_test",
-        prompt="Return a number",
-        expected_patterns=[r"\d+"],
-        forbidden_elements=["41", "43"]
+        name="forbidden_test", prompt="Return a number", expected_patterns=[r"\d+"], forbidden_elements=["41", "43"]
     )
 
     # Valid response
@@ -118,11 +112,8 @@ def test_evaluator_complex_patterns():
     test_case = LLMTestCase(
         name="json_test",
         prompt="Return JSON with number 42",
-        expected_patterns=[
-            r'{\s*"number":\s*42\s*}',
-            r'"number":\s*42'
-        ],
-        required_elements=["number", "42"]
+        expected_patterns=[r'{\s*"number":\s*42\s*}', r'"number":\s*42'],
+        required_elements=["number", "42"],
     )
 
     # Valid JSON response
@@ -137,6 +128,7 @@ def test_evaluator_complex_patterns():
 
 
 @pytest.mark.asyncio
+@pytest.mark.requires_api
 async def test_evaluator_with_llm(openai_config):
     """Test evaluation with actual LLM response."""
     from alleycat_core.llm.openai import OpenAIProvider
@@ -147,12 +139,13 @@ async def test_evaluator_with_llm(openai_config):
         prompt="Respond with the isolated number 42",
         expected_patterns=[r"^42$"],
         min_score=0.9,
-        settings={"temperature": 0.1}  # Low temperature for consistency
+        settings={"temperature": 0.1},  # Low temperature for consistency
     )
 
     provider = OpenAIProvider(openai_config)
     response = await provider.respond(input=test_case.prompt)
 
     result = evaluator.evaluate(response.output_text, test_case)
-    assert result.score >= test_case.min_score, \
+    assert result.score >= test_case.min_score, (
         f"LLM response evaluation failed. Score: {result.score}. Assessment: {result.assessment}"
+    )

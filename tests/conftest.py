@@ -19,7 +19,10 @@ from .fixtures.openai_fixtures import (  # noqa: F401
 
 def pytest_configure() -> None:
     """Configure pytest - load environment variables before running tests."""
+    # Load .env file from current directory and project root
     load_dotenv()
+    project_root = Path(__file__).parent.parent
+    load_dotenv(project_root / ".env")
 
 
 @pytest.fixture(autouse=True)
@@ -28,21 +31,30 @@ def setup_test_env() -> Generator[None, None, None]:
     # Store original environment
     original_env = dict(os.environ)
 
-    # Get API key from environment, fail if not set
+    # Try to get API key from environment
     api_key = os.environ.get("ALLEYCAT_OPENAI_API_KEY")
+
+    # If no API key found, try to load from .env file in project root
     if not api_key:
-        pytest.fail(
-            "ALLEYCAT_OPENAI_API_KEY environment variable must be set to run tests. "
-            "Please set it to a valid OpenAI API key in your .env file."
-        )
-    # api_key = "sk-proj-1234567890" # fake for testing
-    # Create temporary config directory
-    test_config_dir = Path.home() / ".alleycat_test"
-    test_config_dir.mkdir(exist_ok=True)
+        project_root = Path(__file__).parent.parent
+        env_file = project_root / ".env"
+        if env_file.exists():
+            load_dotenv(env_file)
+            api_key = os.environ.get("ALLEYCAT_OPENAI_API_KEY")
+
+    # Use a mock key for testing if needed
+    if not api_key:
+        api_key = "sk-test-1234567890"  # Mock key for testing
+        os.environ["ALLEYCAT_OPENAI_API_KEY"] = api_key
+        print("Warning: Using mock API key for tests. Some tests may be skipped.")
+
+    # Create temporary config directory for tests
+    test_config_dir = Path.home() / ".config" / "alleycat_test"
+    test_config_dir.mkdir(parents=True, exist_ok=True)
 
     # Set test environment variables
-    os.environ["ALLEYCAT_OPENAI_API_KEY"] = api_key
     os.environ["ALLEYCAT_MODEL"] = "gpt-4o-mini"
+    os.environ["XDG_CONFIG_HOME"] = str(Path.home() / ".config" / "alleycat_test")
 
     yield
 
@@ -52,9 +64,20 @@ def setup_test_env() -> Generator[None, None, None]:
 
     # Clean up test directory
     if test_config_dir.exists():
-        for file in test_config_dir.iterdir():
-            file.unlink()
-        test_config_dir.rmdir()
+        for file in test_config_dir.glob("**/*"):
+            if file.is_file():
+                file.unlink()
+        for dir_path in sorted([p for p in test_config_dir.glob("**") if p.is_dir()], reverse=True):
+            if dir_path.exists():
+                try:
+                    dir_path.rmdir()
+                except (OSError, FileNotFoundError):
+                    pass
+        try:
+            if test_config_dir.exists():
+                test_config_dir.rmdir()
+        except (OSError, FileNotFoundError):
+            pass
 
 
 def pytest_addoption(parser: Parser) -> None:

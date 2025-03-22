@@ -382,6 +382,63 @@ ALLEYCAT_MODEL=gpt-4
 ALLEYCAT_TEMPERATURE=0.7
 ```
 
+## Configuration and Setup
+
+AlleyCat includes an interactive setup wizard that makes configuration simple and straightforward.
+
+### Automatic First-time Setup
+
+When you run AlleyCat for the first time, if no configuration file exists and no API key is provided, you'll automatically be guided through the setup process. This ensures a smooth onboarding experience without having to read documentation or learn commands.
+
+The setup wizard will:
+
+1. Create necessary configuration directories following XDG standards
+   - Config files: `~/.config/alleycat/` (Linux/macOS) or equivalent on Windows
+   - Data files: `~/.local/share/alleycat/` (Linux/macOS) or equivalent on Windows
+2. Prompt for your OpenAI API key
+3. Let you select your preferred model from available options
+4. Configure other settings like temperature and tool defaults
+
+### Manual Configuration Commands
+
+You can revisit the setup process at any time using either of these commands:
+
+```bash
+# Use the dedicated init command
+alleycat-init
+
+# Or the --init flag with the main command
+alleycat --init
+```
+
+Both methods provide the same interactive configuration experience.
+
+### Removing Configuration
+
+If you want to remove AlleyCat's configuration and data files, you can use:
+
+```bash
+# Remove config using the dedicated command
+alleycat-init --remove
+
+# Or with the main command option
+alleycat --remove-config
+```
+
+This will:
+1. Display all configuration and data files that will be removed
+2. Ask for confirmation before deletion
+3. Optionally remove persona files (with a separate confirmation)
+
+### Configuration File Location
+
+AlleyCat follows the XDG Base Directory Specification for storing configuration:
+
+- **Linux/macOS**: `~/.config/alleycat/config.yml`
+- **Windows**: `%APPDATA%\alleycat\config.yml`
+
+The configuration contains settings like your API key (securely stored), preferred model, temperature, and other defaults that will be used for all AlleyCat commands.
+
 ## Future Features
 
 The roadmap for Alleycat includes exciting additions:
@@ -416,12 +473,21 @@ source .venv/bin/activate  # On Unix/macOS
 pip install -e ".[dev]"
 ```
 
-4. Set up your OpenAI API key:
+4. Run AlleyCat for the first time:
 
 ```bash
-export ALLEYCAT_OPENAI_API_KEY="your-api-key"
-# or add to .env file:
-echo "ALLEYCAT_OPENAI_API_KEY=your-api-key" > .env
+alleycat "Hello, Alleycat!"
+```
+
+If this is your first time running AlleyCat, you'll be guided through an interactive setup process to:
+- Configure your OpenAI API key
+- Select your preferred model
+- Set default preferences
+
+Alternatively, you can run the setup wizard directly:
+
+```bash
+alleycat-init
 ```
 
 5. Verify the installation:
@@ -429,6 +495,8 @@ echo "ALLEYCAT_OPENAI_API_KEY=your-api-key" > .env
 ```bash
 alleycat "Hello, Alleycat!"
 ```
+
+This should return a friendly greeting from the AI model, confirming that everything is set up correctly.
 
 ## Conclusion
 

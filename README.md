@@ -119,17 +119,48 @@ This project uses [uv](https://github.com/astral-sh/uv) as the package manager f
 
 ## Usage
 
-The CLI tool can be run using `uv run` to ensure the correct Python environment but when running in the deployed folder you can also just use `alleycat` as it is in the pyproject.toml commands:
+After installation, you can run AlleyCat directly from the command line:
 
 ```bash
 # Show help
-uv run alleycat --help
+alleycat --help
 
 # Basic usage
-uv run alleycat "Your prompt here"
+alleycat "Your prompt here"
 
 # With options
-uv run alleycat --mode markdown --temperature 0.7 "Your prompt here"
+alleycat --mode markdown --temperature 0.7 "Your prompt here"
+```
+
+> **Note for developers**: When working on the codebase, you can use `uv run alleycat` during development to ensure the correct Python environment is used. or use `make activate` to setup the virtual environment (venv) and then run any of the make functions.
+
+### First-time Setup
+
+When you run AlleyCat for the first time (or if no configuration file is found), you'll automatically be guided through an interactive setup process that will:
+
+1. Create necessary configuration directories following XDG standards
+2. Prompt for your OpenAI API key
+3. Let you select your preferred default model
+4. Configure other settings like temperature and web search defaults
+
+You can revisit this setup at any time using:
+
+```bash
+# Run the setup wizard from the separate command
+alleycat-init
+
+# Or use the --init flag with the main command
+alleycat --init
+```
+
+To remove all AlleyCat configuration files:
+
+```bash
+# Remove config using the dedicated command
+alleycat-init --remove
+
+# Or with the main command
+alleycat --remove-config
 ```
 
 ### Command Line Options
@@ -137,16 +168,24 @@ uv run alleycat --mode markdown --temperature 0.7 "Your prompt here"
 ```bash
 # Basic usage
 alleycat "Your prompt here"
+# note prompte does not need to be quoted
+alleycat what is a cat
 
 # Pipe input
 echo "Your prompt" | alleycat
 
 # With formatting options
-alleycat --mode markdown --temperature 0.7 "Your prompt here"
+alleycat --mode markdown --temperature 1.7 "invent a creative list of 2050 era programming languages"
 
 # Using system instructions
 alleycat -i "You are a helpful assistant" "Your prompt here"
 alleycat -i prompts/custom-style.txt "Your prompt here"
+
+# Initialize or reconfigure settings
+alleycat --init
+
+# Remove configuration and data files
+alleycat --remove-config
 
 # Analyze a file
 alleycat -f docs/alleyfacts.pdf "Summarize this document"
@@ -187,6 +226,8 @@ Available options:
 - `--verbose`, `-v`: Enable verbose debug output
 - `--stream`, `-s`: Stream the response as it's generated
 - `--chat`, `-c`: Enter interactive chat mode with continuous conversation
+- `--init`: Run the configuration wizard to set up or update settings
+- `--remove-config`: Remove AlleyCat configuration and data files
 
 Environment variables:
 
