@@ -271,7 +271,7 @@ def save_to_file(self) -> None:
 
 ## Initialization Command Pattern
 
-The system implements a dedicated initialization command pattern through `alleycat-init`:
+The system implements a dedicated initialization command pattern through `alleycat-admin setup`:
 
 ```python
 @app.command()
@@ -279,35 +279,29 @@ def main(
     remove: bool = typer.Option(False, "--remove", "-r", help="Remove AlleyCat configuration and data files"),
 ) -> None:
     """Initialize AlleyCat configuration with interactive prompts."""
-    # ...implementation...
+    # Implementation details...
 ```
 
-This command:
+This pattern offers two approaches to configuration:
 
-1. Creates XDG-compliant configuration directories
-2. Guides users through an interactive setup process:
-   - OpenAI API key configuration
-   - Model selection
-   - Temperature and other settings
-3. Saves the configuration to the appropriate location
-4. Provides a `--remove` option to clean up configuration files
+1. **Standalone Command**: Available as `alleycat-admin setup` for direct invocation
 
 ### Integration with Main CLI
 
 The initialization pattern is integrated with the main CLI through several mechanisms:
 
-1. **Standalone Command**: Available as `alleycat-init` for direct invocation
-2. **Direct Integration**: Main command checks for `--init` flag:
+1. **Standalone Command**: Available as `alleycat-admin setup` for direct invocation
+2. **Direct Integration**: Main command checks for `--setup` flag:
 ```python
 @app.command()
 def chat(
     # ...other parameters...
-    init: bool = typer.Option(False, "--init", help="Run the initialization wizard"),
+    setup: bool = typer.Option(False, "--setup", help="Run the setup wizard"),
     remove_config: bool = typer.Option(False, "--remove-config", help="Remove configuration files"),
 ) -> None:
     """Send a prompt to the LLM."""
     # First check if user wants to initialize or remove config
-    if init or remove_config:
+    if setup or remove_config:
         init_main(remove=remove_config)
         if not ctx.args:  # If no other arguments, exit after init
             return

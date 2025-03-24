@@ -20,6 +20,55 @@
 alleycat -v -f docs/alleyfacts.pdf -i "You are a technical documentation reviewer. Analyze this guide for clarity, completeness, and accuracy." "Review this document"
 ```
 
+## Knowledge Base
+
+### Create and manage knowledge bases
+
+```bash
+# Create a new knowledge base
+alleycat-admin kb create project_docs
+
+# Add files to the knowledge base
+alleycat-admin kb add project_docs docs/*.md
+
+# Add PDF files to a knowledge base
+alleycat-admin kb add project_docs docs/reference/*.pdf
+
+# List all knowledge bases
+alleycat-admin kb ls
+
+# List files in a specific knowledge base
+alleycat-admin kb ls --name project_docs
+
+# Set a default knowledge base
+alleycat-admin kb default project_docs
+
+# Remove a file from a knowledge base
+alleycat-admin kb delete project_docs file-123456abcdef
+
+# Remove an entire knowledge base
+alleycat-admin kb rm project_docs
+```
+
+### Query knowledge bases
+
+```bash
+# Query a specific knowledge base
+alleycat --kb project_docs "What is the release process for the project?"
+
+# Query multiple knowledge bases
+alleycat --kb project_docs --kb reference_material "Compare the API design in our project with best practices"
+
+# Use with streaming output
+alleycat --kb project_docs --stream "Explain the authentication flow in detail"
+
+# Combine with other tools
+alleycat --kb project_docs --web "How does our implementation compare to current industry standards?"
+
+# Use with verbose output to see debug information
+alleycat --kb project_docs --verbose "What are the key components of our architecture?"
+```
+
 ## External tools
 
 ### Web search

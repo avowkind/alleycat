@@ -6,13 +6,52 @@ Alleycat is a command-line text processing utility that transforms input text us
 
 For comprehensive documentation, see [Alleycat Guide](docs/alleycat-guide.md).
 
-Warning: This is primarily a test project for my working with AI tools. As such it is probably not suitable for production use.  
+## Quickstart
+
+1. Install AlleyCat using pip:
+   ```bash
+   pip install alleycat
+   ```
+
+2. Set up your configuration (you'll need an OpenAI API key):
+   ```bash
+   alleycat-admin setup
+   ```
+
+3. Run a basic prompt:
+   ```bash
+   alleycat "What is the capital of France?"
+   ```
+
+4. Try using the knowledge base feature:
+   ```bash
+   # Create a new knowledge base
+   alleycat-admin kb create my_documents
+   
+   # Add files to the knowledge base
+   alleycat-admin kb add my_documents ~/Documents/*.pdf
+   
+   # Ask questions based on your documents
+   alleycat --kb my_documents "What are the key points in these documents?"
+   ```
+
+5. For interactive chat mode:
+   ```bash
+   alleycat --chat
+   ```
+
+## Warnings
+
+This is primarily a test project for my working with AI tools. As such it is probably not suitable for production use.  
 
 There are other cool tools available:
 
 * openai - if you install the sdk there is a command line which allows API calls to be made.  This is works and is definitive but not very friendly.
 * claude code - lots of features and integration with the terminal and machine, can be used as a pipe or interactively. But its main purpose is a coding assistant. 
 * warp terminal - not a cli an entire terminal with AI built in - great for asking for what you want.
+
+You are responsible for any API credits required or used in using this tool. You should continue to monitor your OpenAI dashboard and remember that costs are associated with different models, number of tokens used and storage associated with vector stores.
+
 
 ## Project Structure
 
@@ -147,17 +186,17 @@ You can revisit this setup at any time using:
 
 ```bash
 # Run the setup wizard from the separate command
-alleycat-init
+alleycat-admin setup
 
-# Or use the --init flag with the main command
-alleycat --init
+# Or use the --setup flag with the main command
+alleycat --setup
 ```
 
 To remove all AlleyCat configuration files:
 
 ```bash
 # Remove config using the dedicated command
-alleycat-init --remove
+alleycat-admin setup --remove
 
 # Or with the main command
 alleycat --remove-config
@@ -182,7 +221,7 @@ alleycat -i "You are a helpful assistant" "Your prompt here"
 alleycat -i prompts/custom-style.txt "Your prompt here"
 
 # Initialize or reconfigure settings
-alleycat --init
+alleycat --setup
 
 # Remove configuration and data files
 alleycat --remove-config
@@ -190,6 +229,11 @@ alleycat --remove-config
 # Analyze a file
 alleycat -f docs/alleyfacts.pdf "Summarize this document"
 # Note: Currently only PDF files are supported
+
+# Use knowledge bases
+alleycat --kb my_project "What are the key components of our architecture?"
+# Query multiple knowledge bases
+alleycat --kb docs --kb code_examples "Compare our API design patterns"
 
 # Use web search tool
 alleycat --tool web "What is the latest news about Python?"
@@ -217,6 +261,7 @@ Available options:
 - `--temperature`, `-t`: Sampling temperature 0.0-2.0 (default: 0.7)
 - `--mode`, `-m`: Output format - text, markdown, or json (default: text)
 - `--file`, `-f`: Upload and reference a PDF file in your conversation (currently only PDF format is supported)
+- `--kb`: Knowledge base name to use for search (can be repeated for multiple KBs)
 - `--tool`: Enable specific tools (available: web, file-search)
 - `--web`, `-w`: Enable web search (alias for `--tool web`)
 - `--knowledge`, `-k`: Enable file search (alias for `--tool file-search`)
@@ -226,7 +271,7 @@ Available options:
 - `--verbose`, `-v`: Enable verbose debug output
 - `--stream`, `-s`: Stream the response as it's generated
 - `--chat`, `-c`: Enter interactive chat mode with continuous conversation
-- `--init`: Run the configuration wizard to set up or update settings
+- `--setup`: Run the configuration wizard to set up or update settings
 - `--remove-config`: Remove AlleyCat configuration and data files
 
 Environment variables:
@@ -326,7 +371,6 @@ The name "Alleycat" draws inspiration from Unix tradition and the tool's nature:
 - Support for multiple LLM providers beyond OpenAI
 - Chat history management with local storage
 - Custom prompt templates
-- Streaming responses
 - Context window management
 - Model parameter presets
 - Command completion for shells

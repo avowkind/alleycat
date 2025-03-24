@@ -404,11 +404,11 @@ The setup wizard will:
 You can revisit the setup process at any time using either of these commands:
 
 ```bash
-# Use the dedicated init command
-alleycat-init
+# Use the dedicated setup command
+alleycat-admin setup
 
-# Or the --init flag with the main command
-alleycat --init
+# Or the --setup flag with the main command
+alleycat --setup
 ```
 
 Both methods provide the same interactive configuration experience.
@@ -419,7 +419,7 @@ If you want to remove AlleyCat's configuration and data files, you can use:
 
 ```bash
 # Remove config using the dedicated command
-alleycat-init --remove
+alleycat-admin setup --remove
 
 # Or with the main command option
 alleycat --remove-config
@@ -487,7 +487,7 @@ If this is your first time running AlleyCat, you'll be guided through an interac
 Alternatively, you can run the setup wizard directly:
 
 ```bash
-alleycat-init
+alleycat-admin setup
 ```
 
 5. Verify the installation:
@@ -507,6 +507,63 @@ By setting up system-wide shortcuts, you can leverage Alleycat's capabilities in
 ## External Tools
 
 Alleycat supports integration with external tools through the OpenAI Responses API. These tools extend the capabilities of the LLM, allowing it to access real-time information or search through document repositories.
+
+### Knowledge Bases
+
+Alleycat now includes a powerful knowledge base feature that allows you to create, manage, and query collections of documents. Knowledge bases use vector embeddings to efficiently search through your documents and provide relevant information to your queries.
+
+#### Managing Knowledge Bases
+
+Use the `alleycat-admin` command to manage your knowledge bases:
+
+```bash
+# Create a new knowledge base
+alleycat-admin kb create project_docs
+
+# Add files to a knowledge base
+alleycat-admin kb add project_docs docs/*.md docs/*.pdf
+
+# List all knowledge bases
+alleycat-admin kb ls
+
+# List files in a specific knowledge base
+alleycat-admin kb ls --name project_docs
+
+# Set a default knowledge base
+alleycat-admin kb default project_docs
+
+# Delete a file from a knowledge base
+alleycat-admin kb delete project_docs file-id123456
+
+# Delete an entire knowledge base
+alleycat-admin kb rm project_docs
+```
+
+#### Querying Knowledge Bases
+
+Once you've created and populated knowledge bases, you can query them directly with the main Alleycat command:
+
+```bash
+# Query a specific knowledge base
+alleycat --kb project_docs "What are the key components of our architecture?"
+
+# Query multiple knowledge bases
+alleycat --kb project_docs --kb reference_material "Compare our API design with best practices"
+
+# Combine with streaming for long responses
+alleycat --kb project_docs --stream "Explain the authentication flow in detail"
+
+# Combine with web search for up-to-date information
+alleycat --kb project_docs --web "How does our implementation compare to current trends?"
+```
+
+The knowledge base feature is particularly useful for:
+- Creating documentation assistants for your projects
+- Building domain-specific knowledge repositories
+- Creating specialized chatbots with access to proprietary information
+- Maintaining living documentation that can be queried naturally
+
+For more detailed information, see the [Knowledge Base documentation](docs/knowledge-base.md).
 
 ### Web Search
 

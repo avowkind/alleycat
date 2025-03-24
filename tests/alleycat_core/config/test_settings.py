@@ -50,8 +50,9 @@ def test_default_settings(clean_env: None) -> None:
     assert settings.history_file == Path(expected_data_dir) / "history.json"
 
 
-def test_environment_override(monkeypatch: "MonkeyPatch") -> None:
+def test_environment_override(monkeypatch: "MonkeyPatch", clean_env: None) -> None:
     """Test that environment variables properly override default settings."""
+    # Set up environment variables
     env_vars = {
         "ALLEYCAT_OPENAI_API_KEY": "test-key",
         "ALLEYCAT_MODEL": "gpt-4",
@@ -63,8 +64,10 @@ def test_environment_override(monkeypatch: "MonkeyPatch") -> None:
     for key, value in env_vars.items():
         monkeypatch.setenv(key, value)
 
+    # Create a new Settings instance with the mocked environment
     settings = Settings()
 
+    # Verify settings match the environment variables
     assert settings.openai_api_key == "test-key"
     assert settings.model == "gpt-4"
     assert settings.temperature == 0.5
