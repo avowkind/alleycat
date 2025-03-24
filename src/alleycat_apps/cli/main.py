@@ -457,13 +457,13 @@ def chat(
         # Check if setup was requested
         if setup:
             # Run the setup wizard
-            admin_app()
+            admin_app(["setup"])
             return
 
         # Check if config removal was requested
         if remove_config:
-            # Run the init command with remove flag
-            admin_app(remove=True)
+            # Run the setup wizard with remove flag
+            admin_app(["setup", "--remove"])
             return
 
         # Get prompt from command line args or stdin
@@ -587,7 +587,7 @@ def chat(
             if settings.config_file is None or not settings.config_file.exists():
                 # No config file and no API key, run initialization wizard automatically
                 console.print("[yellow]No configuration or API key found. Running initialization wizard...[/yellow]")
-                admin_app(remove=False)
+                admin_app(["setup"])
 
                 # After init, reload settings
                 settings = Settings()

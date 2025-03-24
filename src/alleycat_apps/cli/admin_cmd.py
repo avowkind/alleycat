@@ -48,16 +48,9 @@ def main(verbose: bool = verbose_option) -> None:
 
 
 # Add setup command for backward compatibility
-def setup(remove: bool = False) -> None:
-    """Initialize Alleycat configuration.
-
-    This function is maintained for backward compatibility.
-    New code should use the setup command directly.
-
-    Args:
-        remove: If True, remove the configuration file instead of setting it up.
-
-    """
+@app.command("setup", help="Initialize Alleycat configuration")
+def setup_cmd(remove: bool = typer.Option(False, "--remove", "-r", help="Remove the configuration")) -> None:
+    """Initialize Alleycat configuration."""
     if remove:
         _remove_config()
     else:
@@ -99,12 +92,6 @@ def _init_config() -> None:
     settings.save_to_file()
 
     console.print(f"[green]Configuration saved to {settings.config_file}[/green]")
-
-
-@app.command("setup", help="Initialize Alleycat configuration")
-def setup_cmd(remove: bool = typer.Option(False, "--remove", "-r", help="Remove the configuration")) -> None:
-    """Initialize Alleycat configuration."""
-    setup(remove)
 
 
 @kb_app.callback()
