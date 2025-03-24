@@ -24,7 +24,7 @@ from rich.live import Live
 from rich.markdown import Markdown
 from rich.prompt import Prompt
 
-from alleycat_apps.cli.init_cmd import main as init_main
+from alleycat_apps.cli.admin_cmd import app as admin_app
 from alleycat_core import logging
 from alleycat_core.config.settings import Settings
 from alleycat_core.llm import OpenAIFactory
@@ -92,21 +92,17 @@ web_option = typer.Option(
     "-w",
     help="Enable web search (alias for --tool web)",
 )
-file_search_option = typer.Option(
-    False,
-    "--knowledge",
-    "-k",
-    help="Enable file search (alias for --tool file-search)",
-)
-vector_store_option = typer.Option(
+# Define KB option separately to avoid typing issues
+kb_help = "Knowledge base name to use for search (can be repeated)"
+kb_option = typer.Option(
     None,
-    "--vector-store",
-    help="Vector store ID for file search tool",
+    "--kb",
+    help=kb_help,
 )
-init_option = typer.Option(
+setup_option = typer.Option(
     False,
-    "--init",
-    help="Run the initialization wizard to set up configuration",
+    "--setup",
+    help="Run the setup wizard to configure AlleyCat",
 )
 remove_config_option = typer.Option(
     False,
@@ -429,10 +425,9 @@ def chat(
     file: str = file_option,
     tools: str = tool_option,
     web: bool = web_option,
-    file_search: bool = file_search_option,
-    vector_store: str | None = vector_store_option,
-    init: bool = init_option,
+    setup: bool = setup_option,
     remove_config: bool = remove_config_option,
+    kb: list[str] = kb_option,
 ) -> None:
     """Send a prompt to the LLM and get a response.
 
@@ -449,10 +444,9 @@ def chat(
         file: Path to a file to use in the conversation
         tools: Enabled tools (web, file-search)
         web: Enable web search (alias for --tool web)
-        file_search: Enable file search (alias for --tool file-search)
-        vector_store: Vector store ID for file search tool
-        init: Run the initialization wizard to set up configuration
+        setup: Run the setup wizard to configure AlleyCat
         remove_config: Remove AlleyCat configuration and data files
+        kb: Knowledge base name to use for search (can be repeated)
 
     """
     try:
@@ -460,16 +454,16 @@ def chat(
         if verbose:
             logging.set_verbose(True)
 
-        # Check if init was requested
-        if init:
-            # Run the initialization wizard
-            init_main()
+        # Check if setup was requested
+        if setup:
+            # Run the setup wizard
+            admin_app()
             return
 
         # Check if config removal was requested
         if remove_config:
             # Run the init command with remove flag
-            init_main(remove=True)
+            admin_app(remove=True)
             return
 
         # Get prompt from command line args or stdin
@@ -532,11 +526,6 @@ def chat(
                     if "file-search" in settings.tools_requested and "file_search" not in settings.tools_requested:
                         settings.tools_requested = settings.tools_requested.replace("file-search", "file_search")
 
-                    # Only override with CLI parameter if explicitly provided
-                    if vector_store:
-                        settings.vector_store_id = vector_store
-                        logging.info(f"Using vector store ID from command line: {settings.vector_store_id}")
-
         # Handle --web option as an alias for --tool web
         if web:
             settings.enable_web_search = True
@@ -545,25 +534,35 @@ def chat(
             elif "web" not in settings.tools_requested:
                 settings.tools_requested += ",web"
 
-        # Handle --file-search option as an alias for --tool file-search
-        if file_search:
+        # Handle the knowledge base options
+        if kb:
             # Make sure tools_requested has file_search
             if not settings.tools_requested:
                 settings.tools_requested = "file_search"
             elif "file_search" not in settings.tools_requested and "file-search" not in settings.tools_requested:
                 settings.tools_requested += ",file_search"
 
-        # Ensure the tools_requested contains file_search if file-search is requested
-        if tools and ("file-search" in tools or "file_search" in tools):
-            # Make sure tools_requested has file_search
-            if "file_search" not in settings.tools_requested:
-                settings.tools_requested = (
-                    f"{settings.tools_requested},file_search" if settings.tools_requested else "file_search"
-                )
+            # Find the vector store IDs from the knowledge base names
+            vector_store_ids = []
+            for kb_name in kb:
+                if kb_name in settings.knowledge_bases:
+                    vector_store_ids.append(settings.knowledge_bases[kb_name])
+                    if logging.is_verbose():
+                        logging.info(
+                            f"Using knowledge base '{kb_name}'"
+                            f" with vector store ID: {settings.knowledge_bases[kb_name]}"
+                        )
+                else:
+                    logging.warning(f"Knowledge base '{kb_name}' not found in configuration. Skipping.")
 
-            # Log vector store information
-            if logging.is_verbose():
-                logging.info(f"Using vector store ID: {settings.vector_store_id}")
+            # Set the vector store ID to the comma-separated list of vector store IDs
+            if vector_store_ids:
+                settings.vector_store_id = ",".join(vector_store_ids)
+                if logging.is_verbose():
+                    logging.info(f"Using vector store IDs: {settings.vector_store_id}")
+            elif not settings.vector_store_id:
+                # No vector store ID found
+                logging.warning("No valid knowledge bases found. File search may not work correctly.")
 
         # For debug: Log the settings
         if verbose:
@@ -588,7 +587,7 @@ def chat(
             if settings.config_file is None or not settings.config_file.exists():
                 # No config file and no API key, run initialization wizard automatically
                 console.print("[yellow]No configuration or API key found. Running initialization wizard...[/yellow]")
-                init_main(remove=False)
+                admin_app(remove=False)
 
                 # After init, reload settings
                 settings = Settings()
