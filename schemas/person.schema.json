@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The person's name"
+    },
+    "age": {
+      "type": "number",
+      "description": "The person's age"
+    },
+    "gender": {
+      "type": "string",
+      "description": "The person's gender"
+    },
+    "location": {
+      "type": "string",
+      "description": "The person's location"
+    },
+    "interests": {
+      "type": "array",
+      "description": "An array of interests of the person",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "name",
+    "age",
+    "gender",
+    "location",
+    "interests"
+  ],
+  "additionalProperties": false
+}

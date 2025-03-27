@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 from .. import logging
 from .base import LLMProvider, Message
 from .remote_file import RemoteFile, create_remote_file
-from .types import LLMResponse, ResponseFormat, ResponseUsage
+from .types import LLMResponse, ResponseFormat, ResponseRefusal, ResponseUsage
 
 
 class MessageInput(TypedDict):
@@ -44,6 +44,7 @@ class OpenAIConfig(BaseModel):
     instructions: str | None = None  # System message for responses API
     tools: list[ToolParam] | None = None  # Tools for function calling
     include: list[ResponseIncludable] | None = None  # Additional data to include in response
+    stream: bool = False
 
 
 class OpenAIProvider(LLMProvider):
@@ -94,9 +95,18 @@ class OpenAIProvider(LLMProvider):
         if hasattr(response, "id"):
             self.previous_response_id = response.id
 
+        # Handle refusals
+        refusal = None
+        if hasattr(response, "refusal"):
+            refusal = ResponseRefusal(
+                reason=getattr(response.refusal, "reason", "Unknown reason"),
+                details=getattr(response.refusal, "details", None),
+            )
+
         return LLMResponse(
             output_text=response.output_text,
             usage=usage,
+            refusal=refusal,
         )
 
     async def add_file(self, file_path: str) -> bool:
@@ -139,7 +149,6 @@ class OpenAIProvider(LLMProvider):
         self,
         input: str | ResponseInputParam,
         *,
-        stream: bool = False,
         include: list[ResponseIncludable] | None = None,
         instructions: str | None = None,
         max_output_tokens: int | None = None,
@@ -233,23 +242,32 @@ class OpenAIProvider(LLMProvider):
             # Remove any internal parameters that shouldn't be sent to the API
             params.pop("tools_requested", None)
 
-            # Set stream parameter
-            if stream:
-                params["stream"] = True
+            # Handle response format
+            if text is not None or self.config.response_format is not None:
+                logging.info(f"Using response format: {text or self.config.response_format}")
+                response_format = text or self.config.response_format
+                params["text"] = {"format": response_format}
 
-            logging.info(f"Sending request to OpenAI: {params}")
+            # Add tools if specified
+            if tools is not None or applied_tools or self.config.tools is not None:
+                params["tools"] = tools or applied_tools or self.config.tools
 
-            # Call the OpenAI API
-            if stream:
-                stream_response = await self.client.responses.create(**params)
-                # For streaming, wrap the stream in our own to capture the response ID
-                return self._wrap_stream_with_id_capture(stream_response)
-            else:
-                response = await self.client.responses.create(**params)
-                return self._convert_response(response)
+            # Add file context if available
+            if self.remote_file:
+                file_context = await self.remote_file.get_file_context()
+                if file_context:
+                    params.update(file_context)
+
+            # Make the API call
+            if self.config.stream:
+                response_stream = await self.client.responses.create(stream=True, **params)
+                return self._wrap_stream_with_id_capture(response_stream)
+
+            response = await self.client.responses.create(**params)
+            return self._convert_response(response)
 
         except Exception as e:
-            logging.error(f"Error during OpenAI request: {str(e)}")
+            logging.error(f"Error in OpenAI response: {e}")
             raise
 
     async def _wrap_stream_with_id_capture(

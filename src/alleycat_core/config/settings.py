@@ -29,9 +29,16 @@ class Settings(BaseSettings):
     max_history: int = Field(default=100, description="Maximum number of messages to keep in history")
 
     # Output settings
-    output_format: Literal["text", "markdown", "json"] = Field(
+    output_format: Literal["text", "markdown", "json", "schema"] = Field(
         default="text", description="Output format for responses"
     )
+    stream: bool = Field(default=False, description="Whether to stream responses from the LLM")
+    response_format: Any | None = Field(default=None, description="Response format configuration for the LLM")
+
+    # Schema settings
+    schema_file: Path | None = Field(default=None, description="Path to JSON schema file")
+    schema_chain: list[Path] = Field(default_factory=list, description="List of schema files for chained processing")
+    schema_cache_dir: Path | None = Field(default=None, description="Directory for caching schema files")
 
     # Knowledge Base settings
     knowledge_bases: dict[str, str] = Field(
@@ -90,6 +97,12 @@ class Settings(BaseSettings):
             personas_dir = config_dir / "personas"
             personas_dir.mkdir(parents=True, exist_ok=True)
             self.personas_dir = personas_dir
+
+        if self.schema_cache_dir is None:
+            data_dir = Path(user_data_dir("alleycat"))
+            schema_cache_dir = data_dir / "schema_cache"
+            schema_cache_dir.mkdir(parents=True, exist_ok=True)
+            self.schema_cache_dir = schema_cache_dir
 
         return self
 

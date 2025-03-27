@@ -15,7 +15,7 @@ import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, TypeGuard
+from typing import Any, NoReturn, TypeGuard
 
 import typer
 from openai.types.responses.response_stream_event import ResponseStreamEvent
@@ -28,7 +28,8 @@ from alleycat_apps.cli.admin_cmd import app as admin_app
 from alleycat_core import logging
 from alleycat_core.config.settings import Settings
 from alleycat_core.llm import OpenAIFactory
-from alleycat_core.llm.types import ResponseFormat
+from alleycat_core.llm.types import ResponseFormat, ResponseFormatText
+from alleycat_core.schema import SchemaManager, SchemaValidationError
 
 console = Console()
 error_console = Console(stderr=True)
@@ -39,6 +40,9 @@ app = typer.Typer(
     add_completion=True,
 )
 
+# Initialize schema manager
+schema_manager = SchemaManager()
+
 
 class OutputMode(str, enum.Enum):
     """Output mode options."""
@@ -46,6 +50,7 @@ class OutputMode(str, enum.Enum):
     TEXT = "text"
     MARKDOWN = "markdown"
     JSON = "json"
+    SCHEMA = "schema"  # New mode for schema-based output
 
 
 # Define command options at module level
@@ -67,6 +72,7 @@ mode_option = typer.Option(
 api_key_option = typer.Option(None, "--api-key", help="OpenAI API key", envvar="ALLEYCAT_OPENAI_API_KEY")
 verbose_option = typer.Option(False, "--verbose", "-v", help="Enable verbose debug output")
 stream_option = typer.Option(False, "--stream", "-s", help="Stream the response as it's generated")
+no_stream_option = typer.Option(False, "--no-stream", help="Disable response streaming")
 chat_option = typer.Option(False, "--chat", "-c", help="Interactive chat mode with continuous conversation")
 instructions_option = typer.Option(
     None,
@@ -109,6 +115,16 @@ remove_config_option = typer.Option(
     "--remove-config",
     help="Remove AlleyCat configuration and data files",
 )
+schema_option = typer.Option(
+    None,
+    "--schema",
+    help="Path to JSON schema file for structured output",
+)
+schema_chain_option = typer.Option(
+    None,
+    "--schema-chain",
+    help="Comma-separated paths to JSON schema files for chained processing",
+)
 
 
 def get_prompt_from_stdin() -> str:
@@ -128,6 +144,108 @@ def is_error_event(event: ResponseStreamEvent) -> TypeGuard[Any]:
     return event.type in ("error", "response.failed") and hasattr(event, "error") and hasattr(event.error, "message")
 
 
+def handle_non_stream_response(
+    response: Any,
+    console: Console,
+    output_format: str = "text",
+) -> None:
+    """Handle a non-streaming response from the LLM.
+
+    Args:
+        response: The response from the LLM
+        console: The console to print to
+        output_format: The output format (text, markdown, json)
+
+    """
+    # Display the response - response ID is now tracked by the provider
+    if output_format == "markdown":
+        console.print(
+            Markdown(
+                response.output_text,
+                code_theme="github-dark",
+                hyperlinks=True,
+                justify="left",
+            )
+        )
+    elif output_format == "json":
+        console.print_json(response.output_text)
+    else:
+        console.print(response.output_text)
+
+    # Display token usage if verbose
+    if logging.is_verbose() and response.usage:
+        total = response.usage.total_tokens
+        prompt_tokens = response.usage.prompt_tokens
+        completion_tokens = response.usage.completion_tokens
+        logging.info(f"Tokens used: [cyan]{total}[/cyan] (prompt: {prompt_tokens}, completion: {completion_tokens})")
+
+
+def handle_error_event(event: ResponseStreamEvent) -> NoReturn:
+    """Handle error events from the LLM.
+
+    Args:
+        event: The error event to handle. Must be verified as an error event before calling.
+
+    Raises:
+        Exception: Always raises an exception with the appropriate error message
+
+    """
+    if not is_error_event(event):
+        raise TypeError("Event must be an error event")
+
+    error_msg = event.error.message
+    if "context_length_exceeded" in error_msg or "maximum limit" in error_msg:
+        logging.error("Error: The conversation has grown too large for the model's context window.")
+        logging.error("Try starting a new conversation")
+    elif "rate limit" in error_msg.lower():
+        logging.error("Rate limit error: Too many requests in a short period.")
+        logging.error("Please wait a moment before continuing.")
+    else:
+        logging.error(f"Error in stream: {error_msg}")
+    raise Exception(error_msg)
+
+
+def handle_stream_event(
+    event: ResponseStreamEvent,
+    accumulated_text: str,
+    live: Live,
+    output_format: str = "text",
+) -> tuple[str, bool]:
+    """Handle a single stream event and update the live display.
+
+    Args:
+        event: The stream event to handle
+        accumulated_text: The current accumulated text
+        live: The live display instance
+        output_format: The output format (text or markdown)
+
+    Returns:
+        tuple[str, bool]: Updated accumulated text and whether to continue processing
+
+    """
+    if is_text_delta_event(event):
+        accumulated_text += event.delta
+        # Update the display based on format
+        if output_format == "markdown":
+            live.update(
+                Markdown(
+                    accumulated_text,
+                    code_theme="github-dark",
+                    hyperlinks=True,
+                    justify="left",
+                )
+            )
+        else:
+            live.update(accumulated_text)
+        return accumulated_text, True
+    if event.type == "response.completed" and hasattr(event, "response"):
+        # Response ID is now tracked by the provider
+        return accumulated_text, True
+    if is_error_event(event):
+        handle_error_event(event)
+    return accumulated_text, True
+
+
 async def handle_stream(stream: AsyncIterator[ResponseStreamEvent], settings: Settings) -> None:
     """Handle streaming response from the LLM."""
     accumulated_text = ""
@@ -142,16 +260,7 @@ async def handle_stream(stream: AsyncIterator[ResponseStreamEvent], settings: Se
                     # Final text received, format and output
                     logging.output_console.print_json(accumulated_text)
                 elif is_error_event(event):
-                    error_msg = event.error.message
-                    if "context_length_exceeded" in error_msg or "maximum limit" in error_msg:
-                        logging.error("Error: The conversation has grown too large for the model's context window.")
-                        logging.error("Try starting a new conversation or using a model with a larger context window.")
-                    elif "rate limit" in error_msg.lower():
-                        logging.error("Rate limit error: Too many requests in a short period.")
-                        logging.error("Please wait a moment before continuing.")
-                    else:
-                        logging.error(f"Error in stream: {error_msg}")
-                    raise Exception(error_msg)
+                    handle_error_event(event)
                 # Ignore other event types for now
         except Exception as e:
             logging.error(f"Error during streaming: {str(e)}")
@@ -161,26 +270,14 @@ async def handle_stream(stream: AsyncIterator[ResponseStreamEvent], settings: Se
         try:
             with Live(console=logging.output_console, refresh_per_second=4) as live:
                 async for event in stream:
-                    if is_text_delta_event(event):
-                        accumulated_text += event.delta
-                        if settings.output_format == "markdown":
-                            live.update(Markdown(accumulated_text))
-                        else:
-                            live.update(accumulated_text)
-                    elif is_error_event(event):
-                        error_msg = event.error.message
-                        if "context_length_exceeded" in error_msg or "maximum limit" in error_msg:
-                            logging.error("Error: The conversation has grown too large for the model's context window.")
-                            logging.error(
-                                "Try starting a new conversation or using a model with a larger context window."
-                            )
-                        elif "rate limit" in error_msg.lower():
-                            logging.error("Rate limit error: Too many requests in a short period.")
-                            logging.error("Please wait a moment before continuing.")
-                        else:
-                            logging.error(f"Error in stream: {error_msg}")
-                        raise Exception(error_msg)
-                    # Ignore other event types for now
+                    accumulated_text, should_continue = handle_stream_event(
+                        event,
+                        accumulated_text,
+                        live,
+                        settings.output_format,
+                    )
+                    if not should_continue:
+                        break
         except Exception as e:
             logging.error(f"Error during streaming: {str(e)}")
             raise
@@ -203,6 +300,7 @@ async def create_llm(settings: Settings) -> AsyncIterator[Any]:
     """Create an LLM instance as a context manager."""
     factory = OpenAIFactory()
     llm = factory.create(
+        stream=settings.stream,
         api_key=settings.openai_api_key,
         model=settings.model,
         temperature=settings.temperature,
@@ -226,71 +324,35 @@ async def create_llm(settings: Settings) -> AsyncIterator[Any]:
 async def run_chat(
     prompt: str,
     settings: Settings,
-    stream: bool = False,
     instructions: str | None = None,
 ) -> None:
     """Run the chat interaction with the LLM."""
     # Prepare response format based on settings
     response_format: ResponseFormat = None
     if settings.output_format == "json":
-        response_format = {"format": "json"}
+        response_format = ResponseFormatText(format="json")
+    elif settings.output_format == "schema":
+        # Schema should have been loaded and validated in chat()
+        # and passed through in settings.response_format
+        response_format = settings.response_format
 
     async with create_llm(settings) as llm:
         try:
-            if stream:
-                # Use the respond method with streaming
-                response_stream = await llm.respond(
-                    input=prompt,
-                    stream=True,
-                    text=response_format,
-                    instructions=instructions,
-                    web_search=settings.enable_web_search,
-                    vector_store_id=settings.vector_store_id,
-                    tools_requested=getattr(settings, "tools_requested", ""),
-                )
-                # Since the respond method can return either a stream or a regular response,
-                # we need to ensure we have a stream here
-                if isinstance(response_stream, AsyncIterator):
-                    await handle_stream(response_stream, settings)
-                else:
-                    # This should never happen with stream=True
-                    raise TypeError("Expected streaming response but got non-streaming response")
-            else:
-                # Use the respond method without streaming
-                response = await llm.respond(
-                    input=prompt,
-                    text=response_format,
-                    instructions=instructions,
-                    web_search=settings.enable_web_search,
-                    vector_store_id=settings.vector_store_id,
-                    tools_requested=getattr(settings, "tools_requested", ""),
-                )
+            response = await llm.respond(
+                input=prompt,
+                text=response_format,
+                instructions=instructions,
+                web_search=settings.enable_web_search,
+                vector_store_id=settings.vector_store_id,
+                tools_requested=getattr(settings, "tools_requested", ""),
+            )
 
-                # Since the respond method can return either a stream or a regular response,
-                # we need to ensure we have a regular response here
-                if not isinstance(response, AsyncIterator):
-                    # Get response text from the LLMResponse object
-                    response_text = response.output_text
+            match response:
+                case AsyncIterator():
+                    await handle_stream(response, settings)
+                case _:
+                    handle_non_stream_response(response, console, settings.output_format)
 
-                    # Format and display response
-                    if settings.output_format == "markdown":
-                        logging.output(Markdown(response_text))
-                    elif settings.output_format == "json":
-                        logging.output_console.print_json(response_text)
-                    else:
-                        logging.output(response_text)
-
-                    if logging.is_verbose() and response.usage:
-                        total = response.usage.total_tokens
-                        prompt_tokens = response.usage.prompt_tokens
-                        completion_tokens = response.usage.completion_tokens
-                        logging.info(
-                            f"Tokens used: [cyan]{total}[/cyan] "
-                            f"(prompt: {prompt_tokens}, completion: {completion_tokens})"
-                        )
-                else:
-                    # This should never happen with stream=False
-                    raise TypeError("Expected non-streaming response but got streaming response")
         except Exception as e:
             logging.error(str(e))
             if logging.is_verbose():
@@ -304,7 +366,6 @@ async def run_chat(
 async def run_interactive_chat(
     initial_prompt: str,
     settings: Settings,
-    stream: bool = False,
     instructions: str | None = None,
 ) -> None:
     """Run interactive chat mode with continuous conversation."""
@@ -315,80 +376,39 @@ async def run_interactive_chat(
         # Prepare response format based on settings
         response_format: ResponseFormat = None
         if settings.output_format == "json":
-            response_format = {"format": "json"}
+            response_format = ResponseFormatText(format="json")
 
         # Initial prompt from the user
         current_prompt = initial_prompt
 
         try:
             while True:
-                # Get response from LLM - no need to manage previous_response_id
-                # as it's now handled in the provider
                 response = await llm.respond(
                     input=current_prompt,
                     text=response_format,
                     instructions=instructions,
-                    stream=stream,
                     web_search=settings.enable_web_search,
                     vector_store_id=settings.vector_store_id,
                     tools_requested=getattr(settings, "tools_requested", ""),
                 )
 
-                # Handle the response
-                if stream:
-                    if isinstance(response, AsyncIterator):
+                # Handle the response based on its type
+                match response:
+                    case AsyncIterator():
                         # For streaming, we need to accumulate the response as we display it
                         accumulated_text = ""
-                        async for event in response:
-                            if is_text_delta_event(event):
-                                accumulated_text += event.delta
-                                # Update the display - we'll use the same approach as handle_stream
-                                if settings.output_format == "markdown":
-                                    console.print(Markdown(event.delta), end="")
-                                else:
-                                    console.print(event.delta, end="")
-                            elif event.type == "response.completed" and hasattr(event, "response"):
-                                # Response ID is now tracked by the provider
-                                console.print("\n")  # Add a newline at the end
-                            elif is_error_event(event):
-                                error_msg = event.error.message
-                                if "context_length_exceeded" in error_msg or "maximum limit" in error_msg:
-                                    logging.error(
-                                        "Error: The conversation has grown too large for the model's context window."
-                                    )
-                                    logging.error(
-                                        "Try starting a new conversation or using a model with a larger context window."
-                                    )
-                                elif "rate limit" in error_msg.lower():
-                                    logging.error("Rate limit error: Too many requests in a short period.")
-                                    logging.error("Please wait a moment before continuing.")
-                                else:
-                                    logging.error(f"Error in stream: {error_msg}")
-                                raise Exception(error_msg)
-                    else:
-                        raise TypeError("Expected streaming response but got non-streaming response")
-                else:
-                    # Non-streaming response
-                    if not isinstance(response, AsyncIterator):
-                        # Display the response - response ID is now tracked by the provider
-                        if settings.output_format == "markdown":
-                            console.print(Markdown(response.output_text))
-                        elif settings.output_format == "json":
-                            console.print_json(response.output_text)
-                        else:
-                            console.print(response.output_text)
-
-                        # Display token usage if verbose
-                        if logging.is_verbose() and response.usage:
-                            total = response.usage.total_tokens
-                            prompt_tokens = response.usage.prompt_tokens
-                            completion_tokens = response.usage.completion_tokens
-                            logging.info(
-                                f"Tokens used: [cyan]{total}[/cyan] "
-                                f"(prompt: {prompt_tokens}, completion: {completion_tokens})"
-                            )
-                    else:
-                        raise TypeError("Expected non-streaming response but got streaming response")
+                        with Live(console=console, refresh_per_second=4) as live:
+                            async for event in response:
+                                accumulated_text, should_continue = handle_stream_event(
+                                    event,
+                                    accumulated_text,
+                                    live,
+                                    settings.output_format,
+                                )
+                                if not should_continue:
+                                    break
+                    case _:
+                        handle_non_stream_response(response, console, settings.output_format)
 
                 # Get the next prompt from the user
                 console.print("")
@@ -420,6 +440,7 @@ def chat(
     api_key: str | None = api_key_option,
     verbose: bool = verbose_option,
     stream: bool = stream_option,
+    no_stream: bool = no_stream_option,
     chat_mode: bool = chat_option,
     instructions: str = instructions_option,
     file: str = file_option,
@@ -428,6 +449,8 @@ def chat(
     setup: bool = setup_option,
     remove_config: bool = remove_config_option,
     kb: list[str] = kb_option,
+    schema: str = schema_option,
+    schema_chain: str = schema_chain_option,
 ) -> None:
     """Send a prompt to the LLM and get a response.
 
@@ -439,6 +462,7 @@ def chat(
         api_key: OpenAI API key (overrides config)
         verbose: Enable verbose debug output
         stream: Stream the response as it's generated
+        no_stream: Disable response streaming
         chat_mode: Interactive chat mode with continuous conversation
         instructions: System instructions for the model
         file: Path to a file to use in the conversation
@@ -447,6 +471,8 @@ def chat(
         setup: Run the setup wizard to configure AlleyCat
         remove_config: Remove AlleyCat configuration and data files
         kb: Knowledge base name to use for search (can be repeated)
+        schema: Path to JSON schema file for structured output
+        schema_chain: Comma-separated paths to JSON schema files for chained processing
 
     """
     try:
@@ -492,9 +518,44 @@ def chat(
         # 2. Load from config file
         settings.load_from_file()
 
-        # 3. Environment variables (handled by pydantic)
+        # Handle schema options first to ensure proper streaming behavior
+        if schema:
+            try:
+                # Validate and load the schema
+                schema_obj = schema_manager.get_schema(schema)
+                settings.output_format = "schema"
+                # Store the response format directly in settings
+                settings.response_format = schema_obj.to_request_format()
+                # Disable streaming for schema output
+                settings.stream = False
+                if stream:
+                    logging.info("Streaming disabled for schema output format")
+            except SchemaValidationError as e:
+                logging.error(f"Schema validation error: {e}")
+                sys.exit(1)
+            except Exception as e:
+                logging.error(f"Error loading schema: {e}")
+                sys.exit(1)
+        elif schema_chain:
+            try:
+                # Load and validate each schema in the chain
+                schema_paths = [Path(s.strip()) for s in schema_chain.split(",")]
+                for schema_path in schema_paths:
+                    schema_manager.validate_schema_file(schema_path)
+                settings.schema_chain = schema_paths
+                settings.output_format = "schema"
+                # Disable streaming for schema chain
+                settings.stream = False
+                if stream:
+                    logging.info("Streaming disabled for schema chain output format")
+                # TODO: Implement schema chain response format
+            except SchemaValidationError as e:
+                logging.error(f"Schema validation error: {e}")
+                sys.exit(1)
+            except Exception as e:
+                logging.error(f"Error loading schema chain: {e}")
+                sys.exit(1)
 
-        # 4. Command-line arguments (highest priority)
         # Override settings with any provided arguments
         if api_key:
             settings.openai_api_key = api_key
@@ -504,10 +565,21 @@ def chat(
             settings.temperature = temperature
         if output_mode:
             settings.output_format = output_mode.value  # Use the value from the enum
+            # Disable streaming for JSON output
+            if settings.output_format == "json":
+                settings.stream = False
+                if stream:
+                    logging.info("Streaming disabled for JSON output format")
 
-        # For debug: log all environment variable values
-        if verbose:
-            logging.info(f"Settings loaded vector_store_id = {settings.vector_store_id}")
+        # Enable streaming by default in chat mode, unless using incompatible output format
+        if chat_mode and settings.output_format not in ("json", "schema"):
+            settings.stream = not no_stream  # Use no_stream flag to override default
+            if settings.stream and not stream:
+                logging.info("Streaming enabled by default in chat mode")
+            elif no_stream:
+                logging.info("Streaming explicitly disabled in chat mode")
+        elif stream and settings.output_format not in ("json", "schema"):
+            settings.stream = stream
 
         # Set file path
         if file is not None:
@@ -564,14 +636,6 @@ def chat(
                 # No vector store ID found
                 logging.warning("No valid knowledge bases found. File search may not work correctly.")
 
-        # For debug: Log the settings
-        if verbose:
-            logging.info(
-                f"Final settings: enable_web_search={settings.enable_web_search}, "
-                f"vector_store_id={settings.vector_store_id}, "
-                f"tools_requested={settings.tools_requested}"
-            )
-
         # Handle instructions
         instruction_text = None
         if instructions:
@@ -606,16 +670,24 @@ def chat(
                 )
                 sys.exit(1)
 
+        # For debug: Log the settings
+        if verbose:
+            logging.info(
+                f"Final settings: enable_web_search={settings.enable_web_search}, "
+                f"vector_store_id={settings.vector_store_id}, "
+                f"tools_requested={settings.tools_requested}"
+            )
+
         # Run in interactive chat mode if --chat is specified
         if chat_mode:
             try:
-                asyncio.run(run_interactive_chat(prompt, settings, stream, instruction_text))
+                asyncio.run(run_interactive_chat(prompt, settings, instruction_text))
             except KeyboardInterrupt:
                 logging.info("Chat session ended by user.")
                 sys.exit(0)
         else:
             # Run the normal chat interaction
-            asyncio.run(run_chat(prompt, settings, stream, instruction_text))
+            asyncio.run(run_chat(prompt, settings, instruction_text))
 
     except ValueError as e:
         # This could be due to file setup issues

@@ -15,6 +15,28 @@ Alleycat follows Unix philosophy: it does one thing well - transforming text thr
 - **Modern Architecture**: Built on top of the latest OpenAI API with room for more providers
 - **Rich Output Formatting**: Beautiful terminal output with support for markdown rendering
 
+## Getting Started
+
+1. Install AlleyCat using pip:
+
+   ```bash
+   pip install alleycat
+   ```
+
+2. Set up your configuration (you'll need an OpenAI API key):
+
+   ```bash
+   alleycat-admin setup
+   ```
+
+3. Run a basic prompt:
+
+   ```bash
+   alleycat "Hello, Alleycat!"
+   ```
+
+For developers interested in contributing to or modifying AlleyCat, please refer to our [Developer's Guide](developers-guide.md).
+
 ## Basic Usage
 
 The simplest way to use Alleycat is through direct command-line queries:
@@ -35,44 +57,17 @@ observer at rest, the string experiences tension and eventually breaks,
 illustrating non-intuitive aspects of special relativity.
 ```
 
-### File Analysis
-
-Alleycat can analyze files and answer questions about their content using the `-f` or `--file` option:
+You can run an interactive chat session:
 
 ```bash
-# Basic file analysis
-alleycat -f docs/alleyfacts.pdf "Summarize this document"
-
-# Ask specific questions about the content
-alleycat -f docs/alleyfacts.pdf "What are the key features of alleycat mentioned in this document?"
-
-# Combine with markdown output
-alleycat -f docs/alleyfacts.pdf -m markdown "Extract the main points as a bulleted list"
-
-# Use with custom instructions
-alleycat -f docs/alleyfacts.pdf -i "You are a technical reviewer. Be critical and identify any issues or limitations in the document." "Review this document"
+alleycat --chat lets talk about space.
 ```
 
-The file is temporarily uploaded to the LLM provider (OpenAI) for analysis and automatically deleted when the program exits. 
+You can include a file in the prompt:
 
-#### Supported File Formats and Limitations
-
-The following file formats are currently supported:
-- PDF (.pdf)
-- Text (.txt)
-- Markdown (.md)
-- CSV (.csv)
-- JSON (.json)
-- JSONL (.jsonl)
-
-**Important limitations:**
-- **File Size**: Files must be within the token limit of the model being used. If your file is too large, you'll receive a token limit error.
-- **Content Processing**: The quality of analysis depends on the model's ability to parse and understand the file content.
-
-**Tips for handling large files:**
-1. Split the file into smaller parts
-2. Use a model with a larger context window (like gpt-4-turbo with a 128k token context)
-3. Extract only the most relevant sections before uploading
+```bash
+alleycat --file docs/alleyfacts.pdf tell me something about this document
+```
 
 ### Advanced Options
 
@@ -147,7 +142,7 @@ This makes Alleycat an excellent tool for command discovery and automation, comb
 
 ### Interactive Chat Mode
 
-Alleycat supports an interactive chat mode that allows continuous back-and-forth conversations with the AI model. The chat maintains context between messages, enabling you to have coherent multi-turn dialogues.
+Alleycat supports an interactive chat mode that allows continuous back-and-forth conversations with the AI model. The chat maintains context between messages, enabling you to have coherent multi-turn dialogues. Chat mode automatically enables response streaming for a more interactive experience (unless using JSON or schema output formats).
 
 ```bash
 # Start a chat with an initial message
@@ -161,6 +156,9 @@ alleycat -c -i prompts/johnson.txt
 
 # Start a chat with a file and discuss its contents
 alleycat --chat -f docs/alleyfacts.pdf "Let's discuss this document about alleycat features"
+
+# Disable streaming in chat mode if needed
+alleycat --chat --no-stream "Hello"
 ```
 
 In interactive chat mode:
@@ -173,7 +171,7 @@ In interactive chat mode:
 
 Example chat session:
 
-```
+```bash
 $ alleycat --chat "What are the three laws of robotics?"
 
 Alleycat Interactive Chat
@@ -196,7 +194,7 @@ Isaac Asimov created the Three Laws of Robotics. He was an American writer and p
 
 Example chat session with a file:
 
-```
+```bash
 $ alleycat --chat -f docs/alleyfacts.pdf "What is this document about?"
 
 Alleycat Interactive Chat
@@ -221,13 +219,99 @@ Interactive chat mode maintains conversation context between messages, allowing 
 - Educational dialogues where follow-up questions build on previous answers
 - Creative writing assistance with ongoing feedback
 
-The conversation context is maintained through OpenAI's conversation API, which preserves the context between messages using response IDs. This allows the AI to understand references to previous messages and maintain a coherent conversation without having to repeat information.
+### Knowledge Base Support
 
-You can combine chat mode with other options, such as model selection, temperature, and output format:
+Alleycat includes a powerful knowledge base feature that allows you to create, manage, and query collections of documents. Knowledge bases use vector embeddings to enable natural language queries against your own content, making it ideal for document-based assistants, project documentation, research papers, and more.
 
 ```bash
-alleycat --chat --model gpt-4o --temperature 0.8 --mode markdown
+# Create a new knowledge base
+alleycat-admin kb create my_project
+
+# Add files to the knowledge base
+alleycat-admin kb add my_project docs/*.md docs/*.pdf
+
+# Query your knowledge base
+alleycat --kb my_project "What are the key components of our architecture?"
+
+# Set a default knowledge base
+alleycat-admin kb default my_project
+
+# List all knowledge bases
+alleycat-admin kb ls
+
+# List files in a specific knowledge base
+alleycat-admin kb ls --name my_project
+
+# Remove a knowledge base
+alleycat-admin kb rm my_project
 ```
+
+Knowledge bases are particularly useful for:
+
+- Creating documentation assistants for your projects
+- Building domain-specific knowledge repositories
+- Creating specialized chatbots with access to proprietary information
+- Maintaining living documentation that can be queried naturally
+
+You can combine knowledge base queries with other Alleycat features:
+
+```bash
+# Use with streaming output
+alleycat --kb my_project --stream "Explain our authentication flow in detail"
+
+# Use with chat mode
+alleycat --kb my_project --chat "Let's discuss our API design"
+
+# Query multiple knowledge bases
+alleycat --kb project_docs --kb reference_material "Compare our approach with best practices"
+
+# Combine with web search
+alleycat --kb my_project --web "How does our implementation compare to current trends?"
+```
+
+For detailed information about knowledge base features, including implementation details and best practices, see the [Knowledge Base documentation](docs/knowledge-base.md).
+
+### File Analysis
+
+Alleycat can analyze files and answer questions about their content using the `-f` or `--file` option:
+
+```bash
+# Basic file analysis
+alleycat -f docs/alleyfacts.pdf "Summarize this document"
+
+# Ask specific questions about the content
+alleycat -f docs/alleyfacts.pdf "What are the key features of alleycat mentioned in this document?"
+
+# Combine with markdown output
+alleycat -f docs/alleyfacts.pdf -m markdown "Extract the main points as a bulleted list"
+
+# Use with custom instructions
+alleycat -f docs/alleyfacts.pdf -i "You are a technical reviewer. Be critical and identify any issues or limitations in the document." "Review this document"
+```
+
+The file is temporarily uploaded to the LLM provider (OpenAI) for analysis and automatically deleted when the program exits.
+
+#### Supported File Formats and Limitations
+
+The following file formats are currently supported:
+
+- PDF (.pdf)
+- Text (.txt)
+- Markdown (.md)
+- CSV (.csv)
+- JSON (.json)
+- JSONL (.jsonl)
+
+**Important limitations:**
+
+- **File Size**: Files must be within the token limit of the model being used. If your file is too large, you'll receive a token limit error.
+- **Content Processing**: The quality of analysis depends on the model's ability to parse and understand the file content.
+
+**Tips for handling large files:**
+
+1. Split the file into smaller parts
+2. Use a model with a larger context window (like gpt-4-turbo with a 128k token context)
+3. Extract only the most relevant sections before uploading
 
 ## System-Wide Integration
 
@@ -426,6 +510,7 @@ alleycat --remove-config
 ```
 
 This will:
+
 1. Display all configuration and data files that will be removed
 2. Ask for confirmation before deletion
 3. Optionally remove persona files (with a separate confirmation)
@@ -439,70 +524,142 @@ AlleyCat follows the XDG Base Directory Specification for storing configuration:
 
 The configuration contains settings like your API key (securely stored), preferred model, temperature, and other defaults that will be used for all AlleyCat commands.
 
-## Future Features
+## Schema-Based Output
 
-The roadmap for Alleycat includes exciting additions:
+AlleyCat provides powerful schema-based output capabilities that allow you to enforce strict structure on the AI's responses. This feature is particularly useful for automation, data processing, and integration with other tools.
 
-- Support for multiple LLM providers
-- Chat history management
-- Custom prompt templates
-- Streaming responses
-- Context window management
+### Overview
 
-## Getting Started
+The schema feature allows you to:
 
-1. Clone the repository and change to the project directory:
+- Define expected response structures using JSON Schema
+- Ensure consistent output format across multiple queries
+- Chain multiple schemas for complex transformations
+- Validate responses against defined schemas
+- Integrate AI responses with automated workflows
 
-```bash
-git clone https://github.com/avowkind/alleycat.git
-cd alleycat
-```
+### Basic Usage
 
-2. Create and activate a virtual environment using Python 3.12:
+To use schema-based output, provide a JSON schema file that defines your expected response structure:
 
 ```bash
-python3.12 -m venv .venv
-source .venv/bin/activate  # On Unix/macOS
-# or
-.venv\Scripts\activate     # On Windows
+# Basic schema usage
+alleycat --schema schemas/person.schema.json "my name is andrew invent a profile for me"
+
+# With file input
+alleycat --schema schemas/book_characters.schema.json --file book.txt "extract all characters"
 ```
 
-3. Install the package in development mode with dependencies:
+### Schema Files
+
+Schema files are JSON documents that follow the JSON Schema specification. Here's an example schema for person profiles:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The person's name"
+    },
+    "age": {
+      "type": "number",
+      "description": "The person's age"
+    },
+    "gender": {
+      "type": "string",
+      "description": "The person's gender"
+    },
+    "location": {
+      "type": "string",
+      "description": "The person's location"
+    },
+    "interests": {
+      "type": "array",
+      "description": "An array of interests of the person",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["name", "age", "gender", "location", "interests"],
+  "additionalProperties": false
+}
+```
+
+### Schema Chaining
+
+For complex transformations, you can chain multiple schemas together:
 
 ```bash
-pip install -e ".[dev]"
+# Chain extraction and transformation schemas
+alleycat --schema-chain "extract.schema.json,transform.schema.json" "process this data"
 ```
 
-4. Run AlleyCat for the first time:
+Schema chains are processed sequentially, with each schema's output serving as input for the next schema in the chain.
 
-```bash
-alleycat "Hello, Alleycat!"
-```
+### Important Notes
 
-If this is your first time running AlleyCat, you'll be guided through an interactive setup process to:
-- Configure your OpenAI API key
-- Select your preferred model
-- Set default preferences
+1. **Streaming**: Schema-based output automatically disables streaming to ensure complete, valid responses.
+2. **Validation**: Responses are validated against the schema before being returned.
+3. **Error Handling**: Invalid schemas or responses that don't match the schema will result in clear error messages.
+4. **Performance**: Schema validation adds minimal overhead to response processing.
 
-Alternatively, you can run the setup wizard directly:
+### Example Use Cases
 
-```bash
-alleycat-admin setup
-```
+1. **Data Extraction**:
 
-5. Verify the installation:
+   ```bash
+   # Extract structured data from text
+   alleycat --schema contact.schema.json "extract contact details from this email"
+   ```
 
-```bash
-alleycat "Hello, Alleycat!"
-```
+2. **Document Analysis**:
 
-This should return a friendly greeting from the AI model, confirming that everything is set up correctly.
+   ```bash
+   # Analyze document structure
+   alleycat --schema document.schema.json --file report.pdf "analyze this report's structure"
+   ```
 
-## Conclusion
+3. **API Integration**:
 
-Alleycat brings the power of AI to your command line in a clean, efficient package. Whether you're using it for quick queries in the terminal or integrating it system-wide for text processing, its flexibility and ease of use make it an invaluable tool for developers and writers alike.
+   ```bash
+   # Generate API-compatible responses
+   alleycat --schema api_response.schema.json "convert this data for our API"
+   ```
 
-By setting up system-wide shortcuts, you can leverage Alleycat's capabilities in any application that handles text, making it a truly versatile assistant for all your AI-powered text processing needs.
+4. **Batch Processing**:
+
+   ```bash
+   # Process multiple files with consistent output
+   for file in docs/*.txt; do
+     alleycat --schema summary.schema.json --file "$file" "summarize this document"
+   done
+   ```
+
+### Best Practices
+
+1. **Schema Design**:
+   - Keep schemas focused and specific
+   - Use clear, descriptive property names
+   - Include detailed descriptions for each field
+   - Specify required fields explicitly
+
+2. **Validation**:
+   - Test schemas with sample data
+   - Handle edge cases in your schema
+   - Use appropriate data types
+   - Consider adding constraints where needed
+
+3. **Error Handling**:
+   - Implement proper error handling in your scripts
+   - Validate schemas before using in production
+   - Monitor for validation failures
+
+4. **Performance**:
+   - Cache frequently used schemas
+   - Optimize schema complexity
+   - Use schema chains judiciously
 
 ## External Tools
 
@@ -558,6 +715,7 @@ alleycat --kb project_docs --web "How does our implementation compare to current
 ```
 
 The knowledge base feature is particularly useful for:
+
 - Creating documentation assistants for your projects
 - Building domain-specific knowledge repositories
 - Creating specialized chatbots with access to proprietary information
@@ -631,40 +789,8 @@ Configure default settings for tools using environment variables:
 export ALLEYCAT_VECTOR_STORE=vs_11111111111111
 ```
 
-## Development
+## Conclusion
 
-1. Clone the repository and change to the project directory:
+Alleycat brings the power of AI to your command line in a clean, efficient package. Whether you're using it for quick queries in the terminal or integrating it system-wide for text processing, its flexibility and ease of use make it an invaluable tool for developers and writers alike.
 
-```bash
-git clone https://github.com/avowkind/alleycat.git
-cd alleycat
-```
-
-2. Create and activate a virtual environment using Python 3.12:
-
-```bash
-python3.12 -m venv .venv
-source .venv/bin/activate  # On Unix/macOS
-# or
-.venv\Scripts\activate     # On Windows
-```
-
-3. Install the package in development mode with dependencies:
-
-```bash
-pip install -e ".[dev]"
-```
-
-4. Set up your OpenAI API key:
-
-```bash
-export ALLEYCAT_OPENAI_API_KEY="your-api-key"
-# or add to .env file:
-echo "ALLEYCAT_OPENAI_API_KEY=your-api-key" > .env
-```
-
-5. Verify the installation:
-
-```bash
-alleycat "Hello, Alleycat!"
-```
+By setting up system-wide shortcuts, you can leverage Alleycat's capabilities in any application that handles text, making it a truly versatile assistant for all your AI-powered text processing needs.
