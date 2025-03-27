@@ -637,7 +637,8 @@ def chat(
                         logging.info(f"Found vector store ID for '{kb_name}': {vector_store_id}")
                 else:
                     logging.warning(
-                        f"Knowledge base '{kb_name}' not found in configuration. Available: {list(settings.knowledge_bases.keys())}"
+                        f"Knowledge base '{kb_name}' not found in configuration."
+                        f"Available: {list(settings.knowledge_bases.keys())}"
                     )
 
             # Set the vector store ID to the comma-separated list of vector store IDs
@@ -652,7 +653,8 @@ def chat(
 
             if logging.is_verbose():
                 logging.info(
-                    f"Final state - tools_requested: {settings.tools_requested}, vector_store_id: {settings.vector_store_id}"
+                    f"Final state - tools_requested: {settings.tools_requested}, "
+                    f"vector_store_id: {settings.vector_store_id}"
                 )
 
         # Handle instructions
