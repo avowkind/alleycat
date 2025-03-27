@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: alleycat
-Version: 0.7.0
+Version: 0.7.1
 Summary: A command line tool for chat conversations with LLMs
 Author-email: Andrew <andrew@groat.nz>
 License: MIT

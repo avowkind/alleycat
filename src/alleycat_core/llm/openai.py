@@ -191,22 +191,29 @@ class OpenAIProvider(LLMProvider):
             if web_search:
                 applied_tools.append({"type": "web_search_preview"})
 
-            # Add file search tool if vector store ID is provided and explicitly requested
-            file_search_requested = any(
-                pattern in str(kwargs.get("tools_requested", "")) for pattern in ["file_search", "file-search"]
-            )
+            # Add file search tool if vector store ID is provided
+            if vector_store_id:
+                # Debug logging for vector store ID tracking
+                logging.info(f"Processing vector store ID input: {vector_store_id}")
 
-            if file_search_requested:
-                if not vector_store_id:
-                    logging.warning("File search tool requested but no vector store ID provided")
-                else:
-                    logging.info(f"Adding file search tool with vector store ID: {vector_store_id}")
+                # Always add file search tool when vector store ID is provided
+                logging.info(f"Adding file search tool with vector store ID: {vector_store_id}")
 
-                    # Check if it has the required format (vs_*)
-                    if not vector_store_id.startswith("vs_"):
-                        logging.warning(f"Vector store ID {vector_store_id} doesn't match required format vs_*")
+                # Check if it has the required format (vs_*)
+                if not vector_store_id.startswith("vs_"):
+                    logging.warning(f"Vector store ID {vector_store_id} doesn't match required format vs_*")
 
-                    applied_tools.append({"type": "file_search", "vector_store_ids": [vector_store_id]})
+                # Split multiple vector store IDs if provided
+                vector_store_ids = [vid.strip() for vid in vector_store_id.split(",")]
+                logging.info(f"Processed vector store IDs: {vector_store_ids}")
+
+                # Verify each ID matches expected format
+                for vid in vector_store_ids:
+                    if not vid.startswith("vs_"):
+                        logging.warning(f"Individual vector store ID {vid} doesn't match required format vs_*")
+
+                applied_tools.append({"type": "file_search", "vector_store_ids": vector_store_ids})
+                logging.info(f"Final tool configuration: {applied_tools[-1]}")
 
             # Add any additional tools specified in parameters or config
             if tools is not None or self.config.tools is not None:
