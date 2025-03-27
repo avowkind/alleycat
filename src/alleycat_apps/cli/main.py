@@ -607,34 +607,53 @@ def chat(
                 settings.tools_requested += ",web"
 
         # Handle the knowledge base options
-        if kb:
-            # Make sure tools_requested has file_search
+        if kb or settings.default_kb:
+            if logging.is_verbose():
+                logging.info(f"Processing knowledge base request: {kb}")
+                logging.info(
+                    f"Current state - tools_requested: {settings.tools_requested}, default_kb: {settings.default_kb}"
+                )
+
+            # Always set tools_requested to include file_search when using KB
             if not settings.tools_requested:
                 settings.tools_requested = "file_search"
             elif "file_search" not in settings.tools_requested and "file-search" not in settings.tools_requested:
                 settings.tools_requested += ",file_search"
 
+            # Use provided KB list or default KB
+            kb_list: list[str] = []
+            if kb:
+                kb_list = kb
+            elif settings.default_kb and isinstance(settings.default_kb, str):
+                kb_list = [settings.default_kb]
+
             # Find the vector store IDs from the knowledge base names
             vector_store_ids = []
-            for kb_name in kb:
+            for kb_name in kb_list:
                 if kb_name in settings.knowledge_bases:
-                    vector_store_ids.append(settings.knowledge_bases[kb_name])
+                    vector_store_id = settings.knowledge_bases[kb_name]
+                    vector_store_ids.append(vector_store_id)
                     if logging.is_verbose():
-                        logging.info(
-                            f"Using knowledge base '{kb_name}'"
-                            f" with vector store ID: {settings.knowledge_bases[kb_name]}"
-                        )
+                        logging.info(f"Found vector store ID for '{kb_name}': {vector_store_id}")
                 else:
-                    logging.warning(f"Knowledge base '{kb_name}' not found in configuration. Skipping.")
+                    logging.warning(
+                        f"Knowledge base '{kb_name}' not found in configuration. Available: {list(settings.knowledge_bases.keys())}"
+                    )
 
             # Set the vector store ID to the comma-separated list of vector store IDs
             if vector_store_ids:
                 settings.vector_store_id = ",".join(vector_store_ids)
-                if logging.is_verbose():
-                    logging.info(f"Using vector store IDs: {settings.vector_store_id}")
-            elif not settings.vector_store_id:
-                # No vector store ID found
-                logging.warning("No valid knowledge bases found. File search may not work correctly.")
+            elif not settings.vector_store_id and settings.default_kb:
+                # Try to use default KB's vector store ID
+                if settings.default_kb in settings.knowledge_bases:
+                    settings.vector_store_id = settings.knowledge_bases[settings.default_kb]
+                else:
+                    logging.warning("Default knowledge base not found in configuration.")
+
+            if logging.is_verbose():
+                logging.info(
+                    f"Final state - tools_requested: {settings.tools_requested}, vector_store_id: {settings.vector_store_id}"
+                )
 
         # Handle instructions
         instruction_text = None
