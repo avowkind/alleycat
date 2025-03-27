@@ -8,6 +8,7 @@ Author: Andrew Watkins <andrew@groat.nz>
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Any
 
 from openai import AsyncOpenAI
 from openai.types.responses.easy_input_message_param import EasyInputMessageParam
@@ -40,6 +41,17 @@ class RemoteFile(ABC):
 
         """
         pass
+
+    @abstractmethod
+    async def get_file_context(self) -> dict[str, Any]:
+        """Get the file context for API requests.
+
+        Returns:
+            Dict containing file-specific context for API requests
+
+        """
+        # File IDs are now handled through the message content, not as a separate parameter
+        return {}
 
 
 class UploadedFile(RemoteFile):
@@ -136,11 +148,20 @@ class UploadedFile(RemoteFile):
             "type": "message",
         }
 
+    async def get_file_context(self) -> dict[str, Any]:
+        """Get the file context for API requests.
+
+        Returns:
+            Empty dict as file IDs are now handled through message content
+
+        """
+        return {}
+
 
 class TextFile(RemoteFile):
     """A text file that will be included directly in the prompt."""
 
-    MAX_SIZE_BYTES = 1024 * 1024  # 1MB
+    MAX_SIZE_BYTES = 1024 * 1024 * 1  # 1MB
 
     def __init__(self, file_path: str):
         """Initialize the text file.
@@ -215,6 +236,15 @@ class TextFile(RemoteFile):
             ],
             "type": "message",
         }
+
+    async def get_file_context(self) -> dict[str, Any]:
+        """Get the file context for API requests.
+
+        Returns:
+            Empty dict as text files don't need special context
+
+        """
+        return {}
 
 
 def create_remote_file(file_path: str, client: AsyncOpenAI) -> RemoteFile:

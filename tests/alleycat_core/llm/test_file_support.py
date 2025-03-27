@@ -67,6 +67,7 @@ async def test_respond_with_file(mock_async_openai_client: mock.AsyncMock) -> No
     # Mock the responses.create response
     mock_response = mock.AsyncMock()
     mock_response.output_text = "This is a response referencing the file"
+    mock_response.refusal = None
     mock_async_openai_client.responses.create.return_value = mock_response
 
     # Call the respond method
@@ -106,6 +107,7 @@ async def test_respond_with_file_and_instructions(mock_async_openai_client: mock
     # Mock the responses.create response
     mock_response = mock.AsyncMock()
     mock_response.output_text = "This is a response referencing the file"
+    mock_response.refusal = None
     mock_async_openai_client.responses.create.return_value = mock_response
 
     # Call the respond method with instructions

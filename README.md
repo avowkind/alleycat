@@ -40,6 +40,7 @@ For comprehensive documentation, see [Alleycat Guide](docs/alleycat-guide.md).
    alleycat --chat
    ```
 
+
 ## Warnings
 
 This is primarily a test project for my working with AI tools. As such it is probably not suitable for production use.  
@@ -60,9 +61,9 @@ The project follows a modern Python package structure with a `src` layout:
 ```plaintext
 alleycat/
 ├── src/
-│   ├── alleycat_apps/      # Application code
-│   │   └── cli/           # CLI interface
-│   └── alleycat_core/     # Core functionality
+  ├── alleycat_apps/      # Application code
+    └── cli/           # CLI interface
+  └── alleycat_core/     # Core functionality
 ├── tests/                 # Test files
 ├── pyproject.toml         # Project configuration
 └── setup.py              # Development installation
@@ -253,33 +254,39 @@ alleycat --chat "Hello, how are you today?"
 alleycat --chat
 # or talk to dr johnson
 alleycat --chat -i prompts/johnson.txt
+
+## Schema based structured output in json
+
+# Use a single schema
+alleycat --schema schemas/person.schema.json "my name is andrew invent a profile for me"
+
+# Chain multiple schemas for complex transformations - UNTESTED
+# alleycat --schema-chain "extract.schema.json,transform.schema.json" "process this data"
 ```
 
 Available options:
+```txt
+--model                       TEXT                         Model to use [env var: ALLEYCAT_MODEL] [default: None]                       
+--temperature         -t      FLOAT RANGE [0.0<=x<=2.0]    Sampling temperature [default: None]                                         
+--mode                -m      [text|markdown|json|schema]  Output mode (text, markdown, json) [default: None]                           
+--api-key                     TEXT                         OpenAI API key [env var: ALLEYCAT_OPENAI_API_KEY] [default: None]            
+--verbose             -v                                   Enable verbose debug output                                                  
+--stream              -s                                   Stream the response as it's generated                                        
+--chat                -c                                   Interactive chat mode with continuous conversation                           
+--instructions        -i      TEXT                         System instructions (either a string or path to a file) [default: None]      
+--file                -f      TEXT                         Path to a file to upload and reference in the conversation [default: None]   
+--tool                -t      TEXT                         Enable specific tools (web, file-search) [default: None]                     
+--web                 -w                                   Enable web search (alias for --tool web)                                     
+--setup                                                    Run the setup wizard to configure AlleyCat                                   
+--remove-config                                            Remove AlleyCat configuration and data files                                 
+--kb                          TEXT                         Knowledge base name to use for search (can be repeated) [default: None]      
+--schema                      TEXT                         Path to JSON schema file for structured output [default: None]               
+--schema-chain                TEXT                         Comma-separated paths to JSON schema files for chained processing [default: None]  
+--install-completion                                       Install completion for the current shell.                                    
+--show-completion                                          Show completion for the current shell, to copy it or customize the installation.
+--help                                                     Show this message and exit.                                                  
+```
 
-- `--model`: Choose LLM model (default: gpt-4o-mini, env: ALLEYCAT_MODEL)
-- `--temperature`, `-t`: Sampling temperature 0.0-2.0 (default: 0.7)
-- `--mode`, `-m`: Output format - text, markdown, or json (default: text)
-- `--file`, `-f`: Upload and reference a PDF file in your conversation (currently only PDF format is supported)
-- `--kb`: Knowledge base name to use for search (can be repeated for multiple KBs)
-- `--tool`: Enable specific tools (available: web, file-search)
-- `--web`, `-w`: Enable web search (alias for `--tool web`)
-- `--knowledge`, `-k`: Enable file search (alias for `--tool file-search`)
-- `--vector-store`: Vector store ID for file search tool (env: ALLEYCAT_VECTOR_STORE)
-- `--api-key`: OpenAI API key (env: ALLEYCAT_OPENAI_API_KEY)
-- `--instructions`, `-i`: System instructions (string or file path)
-- `--verbose`, `-v`: Enable verbose debug output
-- `--stream`, `-s`: Stream the response as it's generated
-- `--chat`, `-c`: Enter interactive chat mode with continuous conversation
-- `--setup`: Run the configuration wizard to set up or update settings
-- `--remove-config`: Remove AlleyCat configuration and data files
-
-Environment variables:
-
-- `ALLEYCAT_MODEL`: Default model to use
-- `ALLEYCAT_OPENAI_API_KEY`: OpenAI API key
-- `ALLEYCAT_TEMPERATURE`: Default temperature setting
-- `ALLEYCAT_VECTOR_STORE`: Default vector store ID for file search tool
 
 ## Package Management
 
