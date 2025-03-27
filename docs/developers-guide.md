@@ -1,38 +1,13 @@
-# AlleyCat Developer's Guide
+# Alleycat Developer's Guide
 
-This guide provides detailed information for developers who want to contribute to or modify the AlleyCat project.
+This comprehensive guide provides both practical development information and detailed technical reference for developers who want to contribute to or modify the Alleycat project.
 
-## Project Structure
-
-The project follows a modern Python package structure with a `src` layout:
-
-```plaintext
-alleycat/
-├── src/
-│   ├── alleycat_apps/      # Application code
-│   │   └── cli/           # CLI interface
-│   └── alleycat_core/     # Core functionality
-├── tests/                 # Test files
-├── pyproject.toml         # Project configuration
-└── setup.py              # Development installation
-```
-
-### Package Organization
-
-- `alleycat_apps`: Contains application-specific code
-  - `cli`: Command-line interface implementation
-- `alleycat_core`: Core functionality and business logic
-  - `config`: Configuration management
-  - `llm`: LLM integration and API handling
-
-## Development Setup
-
-This project uses [uv](https://github.com/astral-sh/uv) as the package manager for faster and more reliable Python package management.
+## Quick Start
 
 ### Prerequisites
 
 - Python 3.12 or higher
-- uv package manager
+- uv package manager ([uv](https://github.com/astral-sh/uv))
 
 ### Installation Steps
 
@@ -48,7 +23,7 @@ This project uses [uv](https://github.com/astral-sh/uv) as the package manager f
    ```bash
    # with UV
    uv sync --all-extras --dev
-	.venv/bin/activate
+   .venv/bin/activate
 
    # or traditional
    python3.12 -m venv .venv
@@ -81,7 +56,118 @@ This project uses [uv](https://github.com/astral-sh/uv) as the package manager f
 
 > **Note for developers**: When working on the codebase, you can use `uv run alleycat` during development to ensure the correct Python environment is used, or use `make activate` to setup the virtual environment (venv) and then run any of the make functions.
 
-## Development Tools
+## Project Architecture
+
+### Package Structure
+
+The project follows a clean architecture pattern with a modern Python package structure and clear separation of concerns:
+
+```plaintext
+alleycat/
+├── src/
+│   ├── alleycat_apps/      # Application layer
+│   │   └── cli/           # Command-line interface
+│   └── alleycat_core/     # Core business logic
+│       ├── config/        # Configuration management
+│       ├── llm/          # LLM provider implementations
+│       └── logging/       # Logging utilities
+├── tests/                 # Test files
+├── pyproject.toml         # Project configuration
+└── setup.py              # Development installation
+```
+
+### Core Package (`alleycat_core`)
+
+The core package contains the business logic and domain models, independent of any delivery mechanism:
+
+1. **LLM Interface Layer** (`llm/`)
+   - `base.py`: Abstract base classes for LLM interfaces
+   - `openai.py`: OpenAI implementation
+   - `types.py`: Common type definitions
+   - `remote_file.py`: File handling abstractions
+
+2. **Configuration** (`config/`)
+   - `settings.py`: Application settings using Pydantic
+   - Environment variable and .env file support
+   - XDG Base Directory specification for config file locations
+   - YAML-based configuration persistence
+
+3. **Logging** (`logging.py`)
+   - Rich console output formatting
+   - Themed logging levels
+   - Structured output handling
+
+### Applications (`alleycat_apps`)
+
+The applications package contains delivery mechanisms and user interfaces:
+
+1. **Command Line Interface** (`cli/`)
+   - `main.py`: Entry point and command handling
+   - `init_cmd.py`: Configuration initialization and cleanup
+   - Single-shot and interactive modes
+   - File handling integration
+   - Output formatting options
+
+## Core Abstractions
+
+### LLM Provider Interface
+
+The system uses a clean abstraction for LLM providers through the `LLMProvider` abstract base class:
+
+```python
+class LLMProvider(ABC):
+    @abstractmethod
+    async def respond(
+        self,
+        input: str | ResponseInputParam,
+        *,
+        stream: bool = False,
+        instructions: str | None = None,
+        text: ResponseFormat = None,
+        **kwargs: Any,
+    ) -> LLMResponse | AsyncIterator[ResponseStreamEvent]:
+        """Send a request to the LLM."""
+        pass
+
+    @abstractmethod
+    async def complete(self, messages: list[Message], **kwargs: Any) -> LLMResponse:
+        """Send a completion request to the LLM."""
+        pass
+
+    @abstractmethod
+    async def add_file(self, file_path: str) -> bool:
+        """Add a file for use with the LLM."""
+        pass
+```
+
+### File Handling
+
+File handling is abstracted through the `RemoteFile` interface:
+
+```python
+class RemoteFile(ABC):
+    @abstractmethod
+    async def initialize(self) -> bool:
+        """Initialize the remote file, uploading if necessary."""
+        pass
+
+    @abstractmethod
+    async def cleanup(self) -> bool:
+        """Clean up the remote file, deleting if necessary."""
+        pass
+
+    @abstractmethod
+    def get_file_prompt(self, input_text: str) -> EasyInputMessageParam:
+        """Get a file prompt that can be included in the input list."""
+        pass
+```
+
+Two implementations are provided:
+
+1. `UploadedFile`: For files that need to be uploaded to the LLM provider (e.g., PDFs)
+2. `TextFile`: For text files that can be included directly in the prompt
+
+## Development Tools and Workflow
 
 ### Testing
 
@@ -93,21 +179,40 @@ make test
 uv run pytest
 ```
 
-### Linting
+The testing framework includes:
 
-Code quality is maintained using ruff:
+1. **Unit Tests**
+   - Mock LLM providers
+   - File handling tests
+   - Configuration validation
+
+2. **Integration Tests**
+   - CLI command testing
+   - File upload/download flows
+   - Response formatting
+
+3. **Test Cases**
+
+   ```python
+   class LLMTestCase(BaseModel):
+       name: str
+       prompt: str
+       expected_patterns: list[str]
+       required_elements: list[str]
+       min_score: float = 0.8
+   ```
+
+### Linting and Type Checking
+
+Code quality is maintained using:
 
 ```bash
+# Linting with ruff
 make lint
 # or
 uv run ruff check .
-```
 
-### Type Checking
-
-Static type checking is performed using mypy:
-
-```bash
+# Type checking with mypy
 uv run mypy src
 ```
 
@@ -178,36 +283,30 @@ AlleyCat uses semantic versioning with a 2-step manual-bump and automated-releas
      - Builds and publishes the package to PyPI
      - Creates a GitHub release with release notes
 
-## Package Management
+## Output Formatting
 
-The project uses setuptools for package management, configured in `pyproject.toml`:
+The system supports three output formats:
 
-```toml
-[build-system]
-requires = ["setuptools>=61.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
+1. **Text**: Plain text output
+2. **Markdown**: Rich formatted output using the `rich` library
+3. **JSON**: Structured data output
 
-[tool.setuptools]
-package-dir = {"" = "src"}
-packages = ["alleycat_apps", "alleycat_core"]
+Output handling is managed through Rich's Console class:
+
+```python
+output_console = Console(theme=theme)
+def output(message: Union[str, ConsoleRenderable], **kwargs):
+    output_console.print(message, **kwargs)
 ```
 
-This configuration:
+## Future Extensions
 
-- Uses the `src` layout for better package isolation
-- Explicitly declares packages to include
-- Supports development installation with `pip install -e .`
+The architecture is designed to support:
 
-## Contributing
-
-When contributing to AlleyCat:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes following the project's coding standards
-4. Write or update tests as needed
-5. Run the test suite locally
-6. Submit a pull request
+1. Additional LLM providers through the `LLMProvider` interface
+2. New file types via the `RemoteFile` abstraction
+3. Alternative user interfaces (API, web) through the clean architecture
+4. Enhanced output formats and rendering options
 
 ## License
 
